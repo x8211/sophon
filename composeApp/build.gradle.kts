@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.serialization)
 }
 
 kotlin {
@@ -37,14 +38,18 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtimeCompose)
-        }
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
+            implementation(libs.serialization.json)
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(project(":desktop-processor"))
+            implementation(libs.datastore)
+            implementation(libs.voyager.navigator)
+            implementation(libs.voyager.screenmodel)
+            implementation(libs.voyager.bottom.sheet.nav)
+            implementation(libs.voyager.tab.nav)
+            implementation(libs.voyager.transitions)
         }
         
         // 正确配置KSP处理器
@@ -87,7 +92,7 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "com.one.myapplication.MainKt"
+        mainClass = "sophon.desktop.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
