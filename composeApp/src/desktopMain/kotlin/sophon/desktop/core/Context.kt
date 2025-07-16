@@ -1,5 +1,6 @@
 package sophon.desktop.core
 
+import androidx.compose.animation.scaleOut
 import sophon.desktop.core.Shell.oneshotShell
 import sophon.desktop.core.Shell.simpleShell
 import sophon.desktop.datastore.adbDataStore
@@ -86,16 +87,17 @@ object Context {
                     )
                 }
 
-//                // 推送服务端
-//                println("正在准备监测组件")
-//                "adb push ${SERVER_SRC_PATH} ${SERVER_DST_PATH}".simpleShell()
-//
-//                launch {
-//                    "adb shell \"export CLASSPATH=${SERVER_DST_PATH};exec app_process ${SERVER_DST_DIR} ${SERVER_MAIN_CLASS}\"".simpleShell()
-//                }
-//                delay(500)
-//                println("启动监测组件成功")
-//                SophonSocketRepository.connect()
+                println(SERVER_SRC_PATH)
+                // 推送服务端
+                println("正在准备监测组件")
+                "adb push $SERVER_SRC_PATH $SERVER_DST_PATH".simpleShell()
+
+                launch {
+                    "adb shell \"export CLASSPATH=${SERVER_DST_PATH};exec app_process $SERVER_DST_DIR ${SERVER_MAIN_CLASS}\"".simpleShell()
+                }
+                delay(500)
+                println("启动监测组件成功")
+                SophonSocketRepository.connect()
             }
         }
     }

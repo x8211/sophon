@@ -7,9 +7,13 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.composeHotReload)
     alias(libs.plugins.ksp)
     alias(libs.plugins.serialization)
+}
+
+apply {
+    from(file(rootProject.layout.projectDirectory.dir("gradle/desktop/package_with_server_dex.gradle.kts")))
+    from(file(rootProject.layout.projectDirectory.dir("gradle/app/package_dex_for_desktop.gradle.kts")))
 }
 
 kotlin {
@@ -26,18 +30,9 @@ kotlin {
         val desktopMain by getting
 
         androidMain.dependencies {
-            implementation(compose.preview)
-            implementation(libs.androidx.activity.compose)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
-            implementation(compose.components.resources)
-            implementation(compose.components.uiToolingPreview)
-            implementation(libs.androidx.lifecycle.viewmodel)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.serialization.json)
         }
         desktopMain.dependencies {
@@ -45,13 +40,14 @@ kotlin {
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(project(":desktop-processor"))
             implementation(libs.datastore)
+            implementation(compose.material3)
             implementation(libs.voyager.navigator)
             implementation(libs.voyager.screenmodel)
             implementation(libs.voyager.bottom.sheet.nav)
             implementation(libs.voyager.tab.nav)
             implementation(libs.voyager.transitions)
         }
-        
+
         // 正确配置KSP处理器
         dependencies {
             add("kspDesktop", project(":desktop-processor"))
@@ -60,13 +56,13 @@ kotlin {
 }
 
 android {
-    namespace = "com.one.myapplication"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    namespace = "sophon.app"
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.one.myapplication"
-        minSdk = libs.versions.android.minSdk.get().toInt()
-        targetSdk = libs.versions.android.targetSdk.get().toInt()
+        applicationId = "sophon.app"
+        minSdk = 24
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
     }
@@ -87,7 +83,6 @@ android {
 }
 
 dependencies {
-    debugImplementation(compose.uiTooling)
 }
 
 compose.desktop {
@@ -96,8 +91,14 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.one.myapplication"
+            packageName = "Sophon"
             packageVersion = "1.0.0"
+            includeAllModules = true
+
+            macOS {
+                // 设置图标
+                iconFile.set(layout.projectDirectory.dir("src/desktopMain/launcher/icon.icns").asFile)
+            }
         }
     }
 }

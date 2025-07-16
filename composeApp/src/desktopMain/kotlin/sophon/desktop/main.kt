@@ -19,7 +19,7 @@ fun App() {
 fun main() = application {
     Window(
         onCloseRequest = {
-//            SophonSocketRepository.disconnect()
+            SophonSocketRepository.disconnect()
             exitApplication()
         },
         title = "Sophon UI"
