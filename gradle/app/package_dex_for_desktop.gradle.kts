@@ -29,6 +29,16 @@ abstract class PackageAndroidDexTask @Inject constructor(
             // 不包含空目录
             includeEmptyDirs = false
         }
+
+        // 新增时间戳重命名逻辑
+        val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(java.util.Date())
+        serverDir.get().asFile.listFiles { file ->
+            file.isFile && file.extension == "dex"
+        }.forEach { dexFile ->
+            val newName = "${dexFile.nameWithoutExtension}_$timestamp.dex"
+            dexFile.renameTo(File(dexFile.parentFile, newName))
+        }
+
         println("已成功将dex文件复制到 ${serverDir.get()}")
     }
 }

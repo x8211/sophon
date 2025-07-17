@@ -2,12 +2,11 @@ package sophon.desktop.feature.screen
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
-import sophon.desktop.core.Context
-import sophon.desktop.core.SophonSocketRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import sophon.desktop.core.Context
 
 class ScreenInfoViewModel : ScreenModel {
 
@@ -22,7 +21,6 @@ class ScreenInfoViewModel : ScreenModel {
                 updateScreenInfo()
             }
         }
-        SophonSocketRepository.sendData("queryPackageInfo")
     }
 
     private suspend fun updateScreenInfo() {

@@ -28,7 +28,6 @@ class AppScreen : Screen {
     @Composable
     override fun Content() {
         val state by Context.stream.collectAsState()
-        println(state)
         if (state.status is State.Status.Success) {
             Navigator(HomeScreen()) {
                 Column(Modifier.fillMaxSize().background(Color.White)) {

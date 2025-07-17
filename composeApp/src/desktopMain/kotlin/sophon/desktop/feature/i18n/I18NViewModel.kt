@@ -9,8 +9,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import sophon.pb.desktop.Project
-import sophon.pb.desktop.Module
+import sophon.desktop.pb.Project
+import sophon.desktop.pb.Module
 import java.io.File
 
 /**
@@ -200,7 +200,7 @@ private fun buildModulesWithRes(
     if (children.isEmpty()) return
     val hit = parent.containsBuildGradle() && parent.containsResDir()
     if (hit) result.add(
-        sophon.pb.desktop.Module(parent.name,level,parent.absolutePath)
+        Module(parent.name, level, parent.absolutePath)
     )
     children.forEach { buildModulesWithRes(it.absolutePath, if (hit) level + 1 else level, result) }
 }

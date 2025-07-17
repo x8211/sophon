@@ -4,7 +4,7 @@ import androidx.datastore.core.CorruptionException
 import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.core.Serializer
 import sophon.desktop.core.PB_HOME
-import sophon.pb.desktop.Project
+import sophon.desktop.pb.Project
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream

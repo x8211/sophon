@@ -1,7 +1,7 @@
 package sophon.server
 
 import android.net.LocalSocket
-import sophon.server.feature.PackageManager
+import sophon.common.protobuf.request.RequestContext
 
 class Connection(private val localSocket: LocalSocket) : Thread() {
 
@@ -12,14 +12,12 @@ class Connection(private val localSocket: LocalSocket) : Thread() {
         try {
             while (!isInterrupted && localSocket.isConnected) {
                 val message = reader.readLine() ?: break // 当连接断开时返回null
-                "收到消息: $message (来自 ${localSocket.localSocketAddress})".logI()
-                val resp = when (message) {
-                    "hello" -> "world"
-                    "queryPackageInfo" -> PackageManager.getPackageInfo("com.mico")?:"queryPackagerInfo fail"
-                    else -> "unknown"
-                }
-                "回复消息: $resp 给 ${localSocket.localSocketAddress}".logI()
-                writer.write("$resp\n")
+                val requestContext = RequestContext.parseFrom(message)
+                "收到消息: ${requestContext.cmd} (来自 ${localSocket.localSocketAddress})".logI()
+                val response = requestHandlerMap[requestContext.cmd]?.handle(requestContext.content)
+                "回复消息: $response 给 ${localSocket.localSocketAddress}".logI()
+                writer.write(response.toString())
+                writer.newLine()
                 writer.flush()
             }
         } catch (e: Exception) {

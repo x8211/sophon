@@ -1,15 +1,14 @@
 package sophon.desktop.core
 
-import androidx.compose.animation.scaleOut
-import sophon.desktop.core.Shell.oneshotShell
-import sophon.desktop.core.Shell.simpleShell
-import sophon.desktop.datastore.adbDataStore
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import sophon.desktop.core.Shell.oneshotShell
+import sophon.desktop.core.Shell.simpleShell
+import sophon.desktop.datastore.adbDataStore
 import java.io.File
 
 object Context {
@@ -70,35 +69,50 @@ object Context {
     }
 
     fun selectDevice(deviceName: String) {
-        println("选择设备：$deviceName")
         scope.launch {
             if (deviceName.isBlank()) {
                 _stream.update { state -> state.copy(status = State.Status.Success("未找到连接设备，直接进入主页")) }
                 return@launch
             }
-            if (_stream.value.selectedDevice != deviceName) {
-                // 断开当前连接
-                SophonSocketRepository.disconnect()
 
-                _stream.update { state ->
-                    state.copy(
-                        status = State.Status.Success("当前连接设备: $deviceName"),
-                        selectedDevice = deviceName
-                    )
-                }
+            val dexInDevice =
+                "adb shell find $SERVER_DST_PATH".simpleShell().trimEnd().split("/").last()
 
-                println(SERVER_SRC_PATH)
-                // 推送服务端
-                println("正在准备监测组件")
+            if (dexInDevice != SERVER_SRC_DEX_NAME) {
+                _stream.update { state -> state.copy(status = State.Status.Loading("监测组件版本不一致，正在重新推送")) }
+                //如果手机里dex文件和当前文件不一样，就重新推送并启动
+                "adb shell rm -rf $SERVER_DST_DIR".simpleShell()
                 "adb push $SERVER_SRC_PATH $SERVER_DST_PATH".simpleShell()
-
-                launch {
-                    "adb shell \"export CLASSPATH=${SERVER_DST_PATH};exec app_process $SERVER_DST_DIR ${SERVER_MAIN_CLASS}\"".simpleShell()
-                }
-                delay(500)
-                println("启动监测组件成功")
-                SophonSocketRepository.connect()
             }
+
+            _stream.update { state -> state.copy(status = State.Status.Loading("正在启动监测组件")) }
+            val pidFile = File("/data/local/tmp/sophon/sophon_pid.txt")
+            if (pidFile.parentFile.exists().not()){
+                pidFile.parentFile.mkdir()
+            }
+
+            // 读取PID文件获取进程ID
+            val lastPid = runCatching { "adb shell cat $pidFile".simpleShell().trim() }.getOrElse { "" }
+
+            //停止当前server进程
+            "adb shell kill $lastPid".simpleShell()
+            println("停止当前server进程: $lastPid")
+
+            // 启动进程并保存PID
+            "adb shell \"export CLASSPATH=${SERVER_DST_PATH};nohup app_process $SERVER_DST_DIR $SERVER_MAIN_CLASS > /dev/null 2>&1 & echo \\$! > ${pidFile.absolutePath}\"".simpleShell()
+            delay(500)
+
+            // 读取PID文件获取进程ID
+            val pid = runCatching { "adb shell cat $pidFile".simpleShell().trim() }.getOrElse { "" }
+            println("启动的应用进程ID: $pid")
+
+            _stream.update { state ->
+                state.copy(
+                    status = State.Status.Success("当前连接设备: $deviceName"),
+                    selectedDevice = deviceName
+                )
+            }
+            SocketClient.connect(deviceName)
         }
     }
 
