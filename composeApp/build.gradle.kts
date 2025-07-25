@@ -41,6 +41,7 @@ kotlin {
             implementation(project(":desktop-processor"))
             implementation(libs.datastore)
             implementation(compose.material3)
+            implementation(compose.materialIconsExtended)
             implementation(libs.voyager.navigator)
             implementation(libs.voyager.screenmodel)
             implementation(libs.voyager.bottom.sheet.nav)

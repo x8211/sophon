@@ -17,7 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,11 +40,13 @@ import sophon.desktop.ui.theme.MaaIcons
 @Composable
 fun ComponentTreeRenderer(
     component: LifecycleComponent,
+    level: Int,
     selectedComponent: LifecycleComponent?,
     onItemClick: (LifecycleComponent) -> Unit,
 ) {
     LifecycleListItem(
         component = component,
+        level = level,
         isSelected = component == selectedComponent,
         selectedComponent = selectedComponent,
         onItemClick = { onItemClick(it) }
@@ -54,6 +56,7 @@ fun ComponentTreeRenderer(
 @Composable
 fun LifecycleListItem(
     component: LifecycleComponent,
+    level: Int,
     isSelected: Boolean = false,
     selectedComponent: LifecycleComponent? = null,
     onItemClick: (LifecycleComponent) -> Unit = {},
@@ -62,12 +65,12 @@ fun LifecycleListItem(
     var isExpanded by remember { mutableStateOf(true) }
     // 当选中状态变化时更新展开状态
     LaunchedEffect(isSelected) {
-        if (isSelected && component.children.isNotEmpty()) {
+        if (isSelected && component.children().isNotEmpty()) {
             isExpanded = true
         }
     }
 
-    val hasChildren = component.children.isNotEmpty()
+    val hasChildren = component.children().isNotEmpty()
 
     Column {
         Row(
@@ -78,7 +81,7 @@ fun LifecycleListItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 缩进
-            Spacer(modifier = Modifier.width((component.level * 5).dp))
+            Spacer(modifier = Modifier.width((level * 15).dp))
 
             // 展开/收起图标
             if (hasChildren) {
@@ -100,19 +103,19 @@ fun LifecycleListItem(
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor =
-                        if (component.isRunning) MaterialTheme.colorScheme.inversePrimary
+                        if (component.isRunning()) MaterialTheme.colorScheme.inversePrimary
                         else MaterialTheme.colorScheme.surfaceVariant
                 ),
                 elevation = CardDefaults.cardElevation(
-                    defaultElevation = if (component.isRunning) 4.dp else 1.dp
+                    defaultElevation = if (component.isRunning()) 4.dp else 1.dp
                 ),
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = component.className,
+                    text = component.name(),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                     color =
-                        if (component.isRunning) MaterialTheme.colorScheme.onPrimaryContainer
+                        if (component.isRunning()) MaterialTheme.colorScheme.onPrimaryContainer
                         else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                     modifier = Modifier.fillMaxWidth().padding(8.dp)
                 )
@@ -121,9 +124,10 @@ fun LifecycleListItem(
 
         // 子组件列表
         if (isExpanded && hasChildren) {
-            component.children.forEach { child ->
+            component.children().forEach { child ->
                 LifecycleListItem(
                     component = child,
+                    level + 1,
                     isSelected = child == selectedComponent,
                     selectedComponent = selectedComponent,
                     onItemClick = { onItemClick(it) }  // 直接传递原始的 onItemClick 函数，这样子组件的点击会被正确处理
@@ -136,37 +140,35 @@ fun LifecycleListItem(
 @Composable
 fun StateTag(lifecycleComponent: LifecycleComponent, modifier: Modifier = Modifier) {
     val (backgroundColor, textColor) = when (lifecycleComponent) {
-        is LifecycleComponent.ActivityRecord -> {
-            when (lifecycleComponent.state) {
-                LifecycleComponent.ActivityRecord.ActivityState.RESUMED -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
-                LifecycleComponent.ActivityRecord.ActivityState.STARTED -> MaterialTheme.colorScheme.secondary to MaterialTheme.colorScheme.onSecondary
-                LifecycleComponent.ActivityRecord.ActivityState.CREATED -> MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.onTertiary
-                else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
-            }
+        is ActivityInfo -> {
+            if (lifecycleComponent.resumed) MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
+            else if (lifecycleComponent.stopped) MaterialTheme.colorScheme.secondary to MaterialTheme.colorScheme.onSecondary
+            else MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.onTertiary
         }
 
-        is LifecycleComponent.FragmentInfo -> {
+        is FragmentInfo -> {
             when (lifecycleComponent.state) {
-                LifecycleComponent.FragmentInfo.FragmentState.RESUMED -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
-
-                LifecycleComponent.FragmentInfo.FragmentState.ATTACHED,
-                LifecycleComponent.FragmentInfo.FragmentState.CREATED,
-                LifecycleComponent.FragmentInfo.FragmentState.VIEW_CREATED,
-                LifecycleComponent.FragmentInfo.FragmentState.AWAITING_EXIT_EFFECTS,
-                LifecycleComponent.FragmentInfo.FragmentState.ACTIVITY_CREATED,
+                FragmentInfo.Companion.State.RESUMED -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
+                FragmentInfo.Companion.State.ATTACHED,
+                FragmentInfo.Companion.State.CREATED,
+                FragmentInfo.Companion.State.VIEW_CREATED,
+                FragmentInfo.Companion.State.AWAITING_EXIT_EFFECTS,
+                FragmentInfo.Companion.State.ACTIVITY_CREATED,
                     -> MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.onTertiary
 
-                LifecycleComponent.FragmentInfo.FragmentState.STARTED,
-                LifecycleComponent.FragmentInfo.FragmentState.AWAITING_ENTER_EFFECTS,
+                FragmentInfo.Companion.State.STARTED,
+                FragmentInfo.Companion.State.AWAITING_ENTER_EFFECTS,
                     -> MaterialTheme.colorScheme.secondary to MaterialTheme.colorScheme.onSecondary
 
                 else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
             }
         }
+
+        else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     Text(
-        text = lifecycleComponent.stateString,
+        text = lifecycleComponent.stateText(),
         modifier = modifier
             .background(
                 color = backgroundColor,
@@ -174,14 +176,14 @@ fun StateTag(lifecycleComponent: LifecycleComponent, modifier: Modifier = Modifi
             )
             .border(
                 width = 1.dp,
-                color = if (lifecycleComponent.isRunning) MaterialTheme.colorScheme.onPrimary.copy(
+                color = if (lifecycleComponent.isRunning()) MaterialTheme.colorScheme.onPrimary.copy(
                     alpha = 0.3f
                 ) else backgroundColor,
                 shape = RoundedCornerShape(8.dp)
             )
             .padding(horizontal = 8.dp, vertical = 4.dp),
         style = MaterialTheme.typography.labelMedium.copy(
-            fontWeight = if (lifecycleComponent.isRunning) FontWeight.Bold else FontWeight.Normal
+            fontWeight = if (lifecycleComponent.isRunning()) FontWeight.Bold else FontWeight.Normal
         ),
         color = textColor
     )
@@ -197,19 +199,10 @@ fun LifecycleDetailCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 4.dp
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .verticalScroll(scrollState)
-        ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp).verticalScroll(scrollState)) {
             // 标题
             Text(
                 text = "组件详情",
@@ -220,10 +213,10 @@ fun LifecycleDetailCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // 类名
-            DetailItem(title = "类名", value = component.className)
+            DetailItem(title = "类名", value = component.name())
 
             Spacer(modifier = Modifier.height(8.dp))
-            Divider()
+            HorizontalDivider()
             Spacer(modifier = Modifier.height(8.dp))
 
             // 状态
@@ -236,22 +229,15 @@ fun LifecycleDetailCard(
                     style = MaterialTheme.typography.titleMedium
                 )
 
-                Box(
-                    modifier = Modifier.padding(start = 8.dp)
-                ) {
+                Box(modifier = Modifier.padding(start = 8.dp)) {
                     StateTag(component)
                 }
             }
 
             // 根据组件类型显示额外信息
             when (component) {
-                is LifecycleComponent.ActivityRecord -> {
-                    ActivityDetailInfo(component)
-                }
-
-                is LifecycleComponent.FragmentInfo -> {
-                    FragmentDetailInfo(component)
-                }
+                is ActivityInfo -> ActivityDetailInfo(component)
+                is FragmentInfo -> FragmentDetailInfo(component)
             }
         }
     }
@@ -275,41 +261,41 @@ private fun DetailItem(title: String, value: String) {
 }
 
 @Composable
-private fun ActivityDetailInfo(activity: LifecycleComponent.ActivityRecord) {
+private fun ActivityDetailInfo(activity: ActivityInfo) {
     Spacer(modifier = Modifier.height(8.dp))
-    Divider()
+    HorizontalDivider()
     Spacer(modifier = Modifier.height(8.dp))
-
     DetailItem(title = "包名", value = activity.packageName)
-
     Spacer(modifier = Modifier.height(8.dp))
-
     DetailItem(title = "是否处于Resumed状态", value = activity.resumed.toString())
-
     Spacer(modifier = Modifier.height(8.dp))
-
     DetailItem(title = "是否处于Stopped状态", value = activity.stopped.toString())
-
     Spacer(modifier = Modifier.height(8.dp))
-
     DetailItem(title = "是否已销毁", value = activity.finished.toString())
 }
 
 @Composable
-private fun FragmentDetailInfo(fragment: LifecycleComponent.FragmentInfo) {
+private fun FragmentDetailInfo(fragment: FragmentInfo) {
     Spacer(modifier = Modifier.height(8.dp))
-    Divider()
-    Spacer(modifier = Modifier.height(8.dp))
-
-    DetailItem(title = "Tag", value = fragment.tag)
+    HorizontalDivider()
     Spacer(modifier = Modifier.height(8.dp))
 
-    // 显示状态码和对应的状态名称
-    val stateDescription = "${fragment.stateNum}(${fragment.state})"
-
-    DetailItem(title = "状态码", value = stateDescription)
-
+    DetailItem(title = "Tag", value = fragment.tag ?: "null")
     Spacer(modifier = Modifier.height(8.dp))
 
-    DetailItem(title = "是否隐藏", value = fragment.isHidden.toString())
+    DetailItem(title = "状态码", value = "${fragment.state.code}")
+    Spacer(modifier = Modifier.height(8.dp))
+
+    DetailItem(title = "Who", value = fragment.who)
+    Spacer(modifier = Modifier.height(8.dp))
+
+    DetailItem(title = "是否隐藏", value = fragment.hidden.toString())
+    Spacer(modifier = Modifier.height(8.dp))
+
+    DetailItem(title = "用户可见提示", value = fragment.userVisibleHint.toString())
+    Spacer(modifier = Modifier.height(8.dp))
+
+    DetailItem(title = "容器信息", value = fragment.container.ifEmpty { "无" })
+    Spacer(modifier = Modifier.height(8.dp))
+
 }

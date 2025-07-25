@@ -7,18 +7,28 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import sophon.desktop.core.Context
+import sophon.desktop.core.Shell.oneshotShell
 
-class TaskRecordViewModel : StateScreenModel<TaskRecord>(TaskRecord()) {
-    private val dataSource = TopTaskDataSource()
+class TaskRecordViewModel : StateScreenModel<List<LifecycleComponent>>(emptyList()) {
 
     init {
         screenModelScope.launch {
             combine(Context.stream, GlobalTimer.tick) { _, _ ->
-                val overview = dataSource.queryPackageName()
-                val detail = dataSource.queryDetail(overview)
-                mutableState.value = detail.formatLevel()
+                val detail = queryDetail(queryPackageName())
+                mutableState.value = detail
             }.stateIn(this)
         }
+    }
+
+
+    private suspend fun queryPackageName(): String {
+        return "adb shell dumpsys activity activities | grep '* Task{' | head -n 1"
+            .oneshotShell { "A=\\d+:(\\S+)".toRegex().find(it)?.groupValues?.getOrNull(1) ?: "" }
+    }
+
+    private suspend fun queryDetail(packageName: String): List<LifecycleComponent> {
+        packageName.ifBlank { return emptyList() }
+        return "adb shell dumpsys activity $packageName".oneshotShell(ActivityTaskParser::parse)
     }
 
 }

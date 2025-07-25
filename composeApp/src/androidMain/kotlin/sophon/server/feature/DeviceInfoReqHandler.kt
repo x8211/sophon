@@ -1,5 +1,6 @@
 package sophon.server.feature
 
+import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Environment
 import sophon.common.protobuf.response.DEVICE_INFO_RSP
@@ -7,8 +8,8 @@ import sophon.common.protobuf.response.DeviceInfoItem
 import sophon.common.protobuf.response.DeviceInfoRsp
 import sophon.common.protobuf.response.DeviceInfoSection
 import sophon.common.protobuf.response.ResponseContext
+import sophon.common.util.FormatTool.formatMemorySize
 import sophon.server.RequestHandler
-import java.text.DecimalFormat
 
 class DeviceInfoReqHandler : RequestHandler {
     override fun handle(request: String): ResponseContext {
@@ -16,10 +17,11 @@ class DeviceInfoReqHandler : RequestHandler {
         val deviceInfoSections = getDeviceInfo()
         return ResponseContext.create(DEVICE_INFO_RSP, DeviceInfoRsp(deviceInfoSections))
     }
-    
+
+    @SuppressLint("NewApi")
     private fun getDeviceInfo(): List<DeviceInfoSection> {
         val sections = mutableListOf<DeviceInfoSection>()
-        
+
         // 设备基本信息
         val basicInfoItems = mutableListOf<DeviceInfoItem>().apply {
             add(DeviceInfoItem("设备品牌", Build.BRAND))
@@ -32,7 +34,7 @@ class DeviceInfoReqHandler : RequestHandler {
             add(DeviceInfoItem("设备指纹", Build.FINGERPRINT))
         }
         sections.add(DeviceInfoSection("设备基本信息", basicInfoItems))
-        
+
         // 系统信息
         val systemInfoItems = mutableListOf<DeviceInfoItem>().apply {
             add(DeviceInfoItem("Android 版本", Build.VERSION.RELEASE))
@@ -42,15 +44,15 @@ class DeviceInfoReqHandler : RequestHandler {
             add(DeviceInfoItem("安全补丁级别", Build.VERSION.SECURITY_PATCH))
         }
         sections.add(DeviceInfoSection("系统信息", systemInfoItems))
-        
+
         // CPU/处理器信息
         val cpuInfoItems = mutableListOf<DeviceInfoItem>().apply {
             add(DeviceInfoItem("CPU ABI", Build.SUPPORTED_ABIS.joinToString(", ")))
-            add(DeviceInfoItem("SoC制造商", Build.SOC_MANUFACTURER ?: "未知"))
-            add(DeviceInfoItem("SoC型号", Build.SOC_MODEL ?: "未知"))
+            add(DeviceInfoItem("SoC制造商", Build.SOC_MANUFACTURER))
+            add(DeviceInfoItem("SoC型号", Build.SOC_MODEL))
         }
         sections.add(DeviceInfoSection("CPU/处理器信息", cpuInfoItems))
-        
+
         // 存储信息
         val storageInfoItems = mutableListOf<DeviceInfoItem>()
         try {
@@ -58,21 +60,17 @@ class DeviceInfoReqHandler : RequestHandler {
             val blockSize = statFs.blockSizeLong
             val totalBlocks = statFs.blockCountLong
             val availableBlocks = statFs.availableBlocksLong
-            
-            val totalSize = totalBlocks * blockSize
-            val availableSize = availableBlocks * blockSize
-            
-            val df = DecimalFormat("#.##")
-            val totalGB = df.format(totalSize / (1024.0 * 1024.0 * 1024.0))
-            val availableGB = df.format(availableSize / (1024.0 * 1024.0 * 1024.0))
-            
-            storageInfoItems.add(DeviceInfoItem("总存储空间", "${totalGB} GB"))
-            storageInfoItems.add(DeviceInfoItem("可用存储空间", "${availableGB} GB"))
+
+            val totalSize = totalBlocks * blockSize / 1024
+            val availableSize = availableBlocks * blockSize / 1024
+
+            storageInfoItems.add(DeviceInfoItem("总存储空间", formatMemorySize(totalSize)))
+            storageInfoItems.add(DeviceInfoItem("可用存储空间", formatMemorySize(availableSize)))
         } catch (e: Exception) {
             storageInfoItems.add(DeviceInfoItem("获取存储信息失败", e.message ?: "未知错误"))
         }
         sections.add(DeviceInfoSection("存储信息", storageInfoItems))
-        
+
         return sections
     }
 }

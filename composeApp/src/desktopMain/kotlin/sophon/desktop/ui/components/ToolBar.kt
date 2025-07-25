@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,12 +41,12 @@ fun ToolBar(title: String, isHome: Boolean = false, onIconClick: () -> Unit) {
         navigationIcon = {
             if (isHome) {
                 IconButton({}, modifier = Modifier.fillMaxHeight()) {
-                    Icon(painter = MaaIcons.Error, "主页", modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.Home, "主页", modifier = Modifier.size(24.dp))
                 }
             } else {
                 IconButton(onIconClick, modifier = Modifier.fillMaxHeight()) {
                     Icon(
-                        painter = MaaIcons.Error,
+                        Icons.Default.ArrowBackIosNew,
                         "返回",
                         modifier = Modifier.size(24.dp)
                     )

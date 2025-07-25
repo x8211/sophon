@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -25,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import sophon.desktop.ui.theme.MaaIcons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +40,7 @@ fun AppDetailsScreen(
                 title = { Text(app.appName) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(painter = MaaIcons.Error, contentDescription = "返回")
+                        Icon(Icons.Default.ArrowBackIosNew, contentDescription = "返回")
                     }
                 }
             )

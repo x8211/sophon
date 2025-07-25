@@ -27,6 +27,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -214,7 +217,7 @@ class I18NScreen : Screen {
                                 } else if (uiState.executionCompleted && uiState.commandOutput.isNotBlank()) {
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Icon(
-                                        painter = MaaIcons.Error,
+                                        Icons.Default.Done,
                                         contentDescription = "完成",
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -603,7 +606,7 @@ fun StepCard(
                 ) {
                     if (isCompleted) {
                         Icon(
-                            painter = MaaIcons.Error,
+                            Icons.Default.Done,
                             contentDescription = "完成",
                             tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(16.dp)
@@ -630,7 +633,7 @@ fun StepCard(
 
                 if (!isExpanded) {
                     Icon(
-                        painter = MaaIcons.Error,
+                        Icons.Default.ExpandMore,
                         contentDescription = "展开",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )

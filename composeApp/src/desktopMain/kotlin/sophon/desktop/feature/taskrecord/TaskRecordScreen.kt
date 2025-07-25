@@ -30,7 +30,7 @@ class TaskRecordScreen : Screen {
     @Composable
     override fun Content() {
         val taskVM = rememberScreenModel { TaskRecordViewModel() }
-        val record by taskVM.state.collectAsState()
+        val activities by taskVM.state.collectAsState()
         var selectedComponent by remember { mutableStateOf<LifecycleComponent?>(null) }
 
         Row(modifier = Modifier.fillMaxSize()) {
@@ -50,13 +50,13 @@ class TaskRecordScreen : Screen {
                         state = listState,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        val lifecycles = record.lifecycleComponents
-                        items(lifecycles.size) {
-                            val component = lifecycles[it]
+                        items(activities.size) {
+                            val component = activities[it]
 
                             // 使用自定义扩展函数来渲染组件树
                             ComponentTreeRenderer(
                                 component = component,
+                                level = 0,
                                 selectedComponent = selectedComponent,
                                 onItemClick = { clickedComponent ->
                                     selectedComponent = clickedComponent

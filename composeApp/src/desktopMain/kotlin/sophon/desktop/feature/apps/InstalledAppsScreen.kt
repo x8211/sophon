@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Android
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -164,7 +166,7 @@ class InstalledAppsScreen : Screen {
                     } ?: run {
                         // 如果没有图标，显示默认图标
                         Icon(
-                            painter = MaaIcons.Error,
+                            Icons.Default.Android,
                             contentDescription = app.appName,
                             modifier = Modifier.size(36.dp),
                             tint = MaterialTheme.colorScheme.primary

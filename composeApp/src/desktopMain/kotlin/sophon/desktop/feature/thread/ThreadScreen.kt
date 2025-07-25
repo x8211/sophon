@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
 import sophon.desktop.processor.annotation.Slot
-import sophon.desktop.core.FormatTool
+import sophon.common.util.FormatTool
 import kotlin.collections.iterator
 
 @Slot("线程信息")

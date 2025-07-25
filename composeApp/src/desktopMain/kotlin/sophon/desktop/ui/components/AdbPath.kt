@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -85,7 +87,7 @@ fun AttachedDeviceDropdownMenu(state: State, onSelectDevice: (String) -> Unit) {
             },
             trailingIcon = {
                 Icon(
-                    painter = MaaIcons.Error,
+                    Icons.Default.ArrowDropDown,
                     "展开收起按钮",
                     modifier = Modifier.size(FilterChipDefaults.IconSize)
                 )

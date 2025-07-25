@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -19,6 +20,7 @@ import cafe.adriel.voyager.navigator.CurrentScreen
 import cafe.adriel.voyager.navigator.Navigator
 import com.processor.SlotManger
 import sophon.desktop.core.Context
+import sophon.desktop.core.GlobalTimer
 import sophon.desktop.core.State
 import sophon.desktop.ui.components.AdbPath
 import sophon.desktop.ui.components.ToolBar
@@ -27,6 +29,7 @@ class AppScreen : Screen {
 
     @Composable
     override fun Content() {
+        LaunchedEffect("startTimer") { GlobalTimer.start() }
         val state by Context.stream.collectAsState()
         if (state.status is State.Status.Success) {
             Navigator(HomeScreen()) {
