@@ -28,6 +28,7 @@ kotlin {
 
     sourceSets {
         val desktopMain by getting
+        val desktopTest by getting // 添加测试源集
 
         androidMain.dependencies {
         }
@@ -47,6 +48,12 @@ kotlin {
             implementation(libs.voyager.bottom.sheet.nav)
             implementation(libs.voyager.tab.nav)
             implementation(libs.voyager.transitions)
+        }
+        desktopTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.junit.jupiter.api)
+            implementation(libs.junit.jupiter.engine)
+            implementation(libs.junit.platform.runner)
         }
 
         // 正确配置KSP处理器

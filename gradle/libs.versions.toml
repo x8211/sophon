@@ -1,6 +1,8 @@
 [versions]
 agp = "8.7.3"
 composeMultiplatform = "1.8.2"
+junitJupiterApi = "5.13.4"
+junitPlatformRunner = "1.13.4"
 kotlin = "2.2.0"
 ksp = "2.2.0-2.0.2"
 kotlinx-coroutines = "1.10.2"
@@ -20,6 +22,9 @@ voyager-tab-nav = { group = "cafe.adriel.voyager", name = "voyager-tab-navigator
 voyager-transitions = { group = "cafe.adriel.voyager", name = "voyager-transitions", version.ref = "voyager" }
 datastore = { module = "androidx.datastore:datastore-core", version.ref = "datastore" }
 serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization-json" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junitJupiterApi" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junitJupiterApi" }
+junit-platform-runner = { module = "org.junit.platform:junit-platform-runner", version.ref = "junitPlatformRunner" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
