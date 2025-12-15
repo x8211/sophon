@@ -20,9 +20,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draganddrop.DragAndDropEvent
+import androidx.compose.ui.draganddrop.DragAndDropTarget
+import java.awt.datatransfer.DataFlavor
+import java.io.File
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -58,15 +63,47 @@ fun FileChooser(
                 color = borderColor,
                 shape = RoundedCornerShape(16.dp)
             )
-//            .onExternalDrag(
-//                onDragStart = { isDragging.value = true },
-//                onDragExit = { isDragging.value = false },
-//                onDrop = { dragValue ->
-//                    isDragging.value = false
-//                    val filePath = (dragValue.dragData as DragData.FilesList).readFiles().firstOrNull()
-//                    onFileSelected.invoke(filePath?.replace("file:", ""))
-//                }
-//            )
+            .dragAndDropTarget(
+                shouldStartDragAndDrop = { true },
+                target = remember {
+                    object : DragAndDropTarget {
+                        override fun onDrop(event: DragAndDropEvent): Boolean {
+                            isDragging.value = false
+                            try {
+                                val nativeEvent = event.nativeEvent
+                                if (nativeEvent is java.awt.dnd.DropTargetDropEvent) {
+                                    nativeEvent.acceptDrop(java.awt.dnd.DnDConstants.ACTION_COPY)
+                                    val transferable = nativeEvent.transferable
+                                    if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                                        @Suppress("UNCHECKED_CAST")
+                                        val files = transferable.getTransferData(DataFlavor.javaFileListFlavor) as List<File>
+                                        files.firstOrNull()?.absolutePath?.let { 
+                                            onFileSelected(it) 
+                                        }
+                                        nativeEvent.dropComplete(true)
+                                        return true
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                            return false
+                        }
+
+                        override fun onEntered(event: DragAndDropEvent) {
+                            isDragging.value = true
+                        }
+
+                        override fun onExited(event: DragAndDropEvent) {
+                            isDragging.value = false
+                        }
+                        
+                        override fun onEnded(event: DragAndDropEvent) {
+                            isDragging.value = false
+                        }
+                    }
+                }
+            )
             .onClick {
                 onFileSelected.invoke(openFileChooser(fileSelectionMode, fileFilter))
             },
