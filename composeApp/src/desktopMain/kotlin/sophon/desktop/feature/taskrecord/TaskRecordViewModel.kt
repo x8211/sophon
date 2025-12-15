@@ -2,9 +2,6 @@ package sophon.desktop.feature.taskrecord
 
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
-import sophon.desktop.core.GlobalTimer
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import sophon.desktop.core.Context
 import sophon.desktop.core.Shell.oneshotShell
@@ -13,10 +10,10 @@ class TaskRecordViewModel : StateScreenModel<List<LifecycleComponent>>(emptyList
 
     init {
         screenModelScope.launch {
-            combine(Context.stream, GlobalTimer.tick) { _, _ ->
+            Context.stream.collect {
                 val detail = queryDetail(queryPackageName())
                 mutableState.value = detail
-            }.stateIn(this)
+            }
         }
     }
 

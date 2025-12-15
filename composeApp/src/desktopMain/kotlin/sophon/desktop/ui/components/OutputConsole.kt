@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import sophon.desktop.ui.theme.MaaIcons
+import sophon.desktop.ui.theme.Dimens
 
 @Composable
 fun OutputConsole(
@@ -37,7 +38,7 @@ fun OutputConsole(
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF212121)
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -45,14 +46,14 @@ fun OutputConsole(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF333333))
-                    .padding(8.dp),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .padding(Dimens.paddingMedium),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     "输出结果",
                     style = MaterialTheme.typography.titleSmall,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -64,11 +65,11 @@ fun OutputConsole(
                     Icon(
                         Icons.Default.Clear,
                         contentDescription = "清除",
-                        tint = if (output.isNotBlank()) Color.White else Color.Gray
+                        tint = if (output.isNotBlank()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(Dimens.paddingSmall))
             }
 
             // 输出内容
@@ -76,18 +77,18 @@ fun OutputConsole(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(8.dp)
+                    .padding(Dimens.paddingMedium)
             ) {
                 if (output.isBlank()) {
                     Text(
                         text = placeholder,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 } else {
                     Text(
                         output,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontFamily = FontFamily.Monospace,
                         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                     )

@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import sophon.desktop.ui.theme.MaaIcons
+import sophon.desktop.ui.theme.Dimens
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileFilter
 import javax.swing.filechooser.FileSystemView
@@ -57,11 +58,11 @@ fun FileChooser(
     
     Surface(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Dimens.cornerRadiusLarge))
             .border(
                 width = if (isDragging.value) 2.dp else 1.dp,
                 color = borderColor,
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(Dimens.cornerRadiusLarge)
             )
             .dragAndDropTarget(
                 shouldStartDragAndDrop = { true },
@@ -111,7 +112,7 @@ fun FileChooser(
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.padding(24.dp)
+            modifier = Modifier.padding(Dimens.paddingExtraLarge)
         ) {
             Column(
                 verticalArrangement = Arrangement.Center,
@@ -120,11 +121,11 @@ fun FileChooser(
                 Icon(
                     painter = MaaIcons.DragClick,
                     contentDescription = "上传文件",
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(Dimens.iconSizeLarge),
                     tint = MaterialTheme.colorScheme.primary
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Dimens.spacerMedium))
                 
                 if (title.isNotBlank()) {
                     Text(
@@ -132,7 +133,7 @@ fun FileChooser(
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimens.spacerSmall))
                 }
                 
                 Text(

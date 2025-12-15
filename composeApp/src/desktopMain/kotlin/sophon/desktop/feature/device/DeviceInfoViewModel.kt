@@ -3,12 +3,15 @@ package sophon.desktop.feature.device
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import kotlinx.coroutines.launch
+import sophon.desktop.core.Context
 
 class DeviceInfoViewModel : StateScreenModel<List<DeviceInfoSection>>(emptyList()) {
 
     init {
         screenModelScope.launch {
-            mutableState.value = parseGetProp(getProp())
+            Context.stream.collect {
+                mutableState.value = parseGetProp(getProp())
+            }
         }
     }
 }

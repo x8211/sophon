@@ -23,9 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
-import sophon.desktop.processor.annotation.Slot
 
-@Slot("设备信息")
 class DeviceInfoScreen : Screen {
 
     @Composable

@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import sophon.desktop.core.State
 import sophon.desktop.core.Context
 import sophon.desktop.ui.theme.MaaIcons
+import sophon.desktop.ui.theme.Dimens
 import sophon.desktop.ui.theme.inputChipColorsMd3
 import sophon.desktop.ui.theme.menuItemColorsMd3
 
@@ -49,11 +50,11 @@ fun AdbPath(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(30.dp)) {
             Text("Adb路径：${state.adbToolPath}", style = MaterialTheme.typography.labelMedium)
-            Spacer(Modifier.width(2.dp))
+            Spacer(Modifier.width(Dimens.paddingSmall))
             Icon(
                 if (state.adbToolAvailable) MaaIcons.CheckCircle else MaaIcons.Error,
                 if (state.adbToolAvailable) "valid" else "invalid",
-                tint = if (state.adbToolAvailable) Color.Green else Color.Red,
+                tint = if (state.adbToolAvailable) sophon.desktop.ui.theme.SuccessGreen else MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(ButtonDefaults.IconSize)
             )
         }

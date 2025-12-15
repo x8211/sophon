@@ -2,11 +2,8 @@ package sophon.desktop.feature.thread
 
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
-import sophon.desktop.core.Context
-import sophon.desktop.core.GlobalTimer
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import sophon.desktop.core.Context
 import sophon.desktop.core.Shell.oneshotShell
 
 class ThreadViewModel : StateScreenModel<List<ThreadInfo>>(emptyList()) {
@@ -15,11 +12,11 @@ class ThreadViewModel : StateScreenModel<List<ThreadInfo>>(emptyList()) {
 
     init {
         screenModelScope.launch {
-            combine(Context.stream, GlobalTimer.tick) { _, _ ->
+            Context.stream.collect {
                 val pid = threadDataSource.queryPidWithPkg(queryPackageName())
                 val threadInfo = threadDataSource.queryThreadList(pid)
                 mutableState.value = threadInfo
-            }.stateIn(this)
+            }
         }
     }
 

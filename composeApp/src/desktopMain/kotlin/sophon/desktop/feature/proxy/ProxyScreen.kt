@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
 import sophon.desktop.processor.annotation.Slot
+import sophon.desktop.ui.theme.Dimens
 import sophon.desktop.ui.theme.filledTonalButtonColorsMd3
 import sophon.desktop.ui.theme.listItemColorsMd3
 import sophon.desktop.ui.theme.outlinedTextFieldColorsMd3
@@ -46,7 +47,7 @@ class ProxyScreen : Screen {
         val proxyInfo by proxyVM.state.collectAsState()
         var inputProxy by remember { mutableStateOf("") }
 
-        Column {
+        Column(modifier = Modifier.padding(Dimens.paddingMedium)) {
             Text("当前代理：${proxyInfo.current}", style = MaterialTheme.typography.titleMedium)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(

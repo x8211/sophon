@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -94,29 +93,32 @@ class DeepLinkScreen : Screen {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Split View: Output Console (Left) + History (Right)
-                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    OutputConsole(
-                        output = output,
-                        onClear = { viewModel.clearOutput() },
-                        modifier = Modifier.weight(0.6f).fillMaxHeight(),
-                        placeholder = "运行结果将显示在这里"
-                    )
+                // Middle: History List
+                HistoryList(
+                    history = history,
+                    onRun = {
+                        uri = it
+                        viewModel.openDeepLink(it)
+                    },
+                    onCopy = { clipboardManager.setText(AnnotatedString(it)) },
+                    onDelete = { viewModel.deleteHistory(it) },
+                    onFill = { uri = it },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                )
 
-                    Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                    HistoryList(
-                        history = history,
-                        onRun = { 
-                            uri = it 
-                            viewModel.openDeepLink(it) 
-                        },
-                        onCopy = { clipboardManager.setText(AnnotatedString(it)) },
-                        onDelete = { viewModel.deleteHistory(it) },
-                        onFill = { uri = it },
-                        modifier = Modifier.weight(0.4f).fillMaxHeight()
-                    )
-                }
+                // Bottom: Output Console
+                OutputConsole(
+                    output = output,
+                    onClear = { viewModel.clearOutput() },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    placeholder = "运行结果将显示在这里"
+                )
             }
         }
     }
