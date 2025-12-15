@@ -32,6 +32,7 @@ fun OutputConsole(
     output: String,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
+    placeholder: String = "请选择APK文件进行安装"
 ) {
     Card(
         modifier = modifier,
@@ -79,7 +80,7 @@ fun OutputConsole(
             ) {
                 if (output.isBlank()) {
                     Text(
-                        "请选择APK文件进行安装",
+                        text = placeholder,
                         color = Color.Gray,
                         modifier = Modifier.align(Alignment.Center)
                     )
