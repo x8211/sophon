@@ -9,46 +9,76 @@ desktopMain/kotlin/sophon/desktop/
 ├── feature/                # 业务功能模块，按功能垂直切分
 │   ├── device/             # 示例：设备信息功能
 │   │   ├── DeviceInfoScreen.kt       # 视图 (View)
-│   │   ├── DeviceInfoViewModel.kt    # 逻辑 (ScreenModel)
+│   │   ├── DeviceInfoViewModel.kt    # 逻辑 (ViewModel)
 │   │   └── GetPropDataSource.kt      # 数据源 (Data Source)
 │   ├── apps/               # 应用管理功能
+│   ├── deeplink/           # DeepLink 测试功能
 │   └── ...
 ├── ui/                     # 通用 UI 组件与系统
 │   ├── components/         # 全局通用的原子组件 (Buttons, Dialogs)
 │   └── theme/              # 主题配置 (Material 3)
-├── core/                   # 核心基础库 (Utils, Global State)
-└── AppScreen.kt            # 应用主入口屏幕
+├── core/                   # 核心基础库 (Shell, Context, SocketClient)
+├── datastore/              # 数据持久化存储
+├── pb/                     # 协议定义 (Protocol Buffers)
+├── AppScreen.kt            # 应用主路由/导航容器
+├── SophonViewModel.kt      # 应用级全局 ViewModel
+└── main.kt                 # 桌面端程序入口
 ```
 
 ### 规则 (Rules)
 - **新功能**: 在 `feature/` 下创建独立包，包含该功能所需的所有 UI、State 和 Logic。
 - **组件**: 仅将高复用性、跨功能的组件放入 `ui/components`。
+- **全局状态**: 应用级别的状态维护在 `SophonViewModel.kt` 中。
 
 ## 2. UI 开发规范 (UI Development)
 
-- **设计系统**: 严格使用 **Material 3** (`androidx.compose.material3`)。
-- **主题**: 所有 UI 必须包裹在 `AppTheme` 中。**严禁**硬编码颜色值，必须使用 `MaterialTheme.colorScheme`。
+- **设计系统 (Design System)**:
+    - 严格使用 **Material 3** (`androidx.compose.material3`)。
+    - 布局根节点使用 `AppTheme`，禁止硬编码颜色，必须使用 `MaterialTheme.colorScheme`。
+    - 尺寸、间距和圆角必须统一引用 `sophon.desktop.ui.theme.Dimens`。
+
 - **页面定义 (Screen Definition)**:
-    - 实现 `cafe.adriel.voyager.core.screen.Screen` 接口。
-    - Screen 类应保持轻量（仅负责布局和 ViewModel 绑定）。
-    - 将内容提取为 `@Composable private fun ...Content()` 以便预览和复用。
+    - **结构**: 页面即 `@Composable` 函数。
+    - **路由**: 路由枚举定义在 `AppScreen` 类中，并在 `SophonApp` 的 `NavHost` 中配置导航图。
+    - **ViewModel**: 使用 `androidx.lifecycle.viewmodel.compose.viewModel` 获取实例。
+
+- **组件规范 (Component Standards)**:
+    - **通用组件**: 放置在 `ui/components`，如 `ToolBar`, `NavigationSideBar`。
+    - **侧边栏**: 使用 `NavigationSideBar` 作为主导航，支持展开/收起动画。
+    - **滚动条**: 桌面端长列表必须添加垂直滚动条 (见 `feature/device/ScrollbarModifier.kt`)。
+
 - **桌面端适配 (Desktop Adaptation)**:
-    - **鼠标**: 为可交互元素添加悬停效果 (`Modifier.hoverable`, `Modifier.pointerHoverIcon`)。
-    - **键盘**: 通过 `KeyboardHandler` 或 `onKeyEvent` 支持快捷键。
-    - **窗口**: 处理特定的窗口约束和尺寸限制。
+    - **鼠标**: 为可交互元素添加 `Modifier.pointerHoverIcon` 或悬停背景色。
+    - **窗口**: 使用 `animateContentSize` 处理布局尺寸变化的过渡动画。
+    - **布局**: 善用 `Modifier.weight(1f)` 填充剩余空间，避免硬编码宽高。
 
 ## 3. 状态管理 (State Management)
 
-- **框架**: 使用 **Voyager ScreenModel**。
-- **状态暴露**: 使用 `stateIn` 或 `MutableStateFlow`。
-    - 简单页面：继承 `StateScreenModel<T>`。
-    - 复杂页面：暴露 `val uiState: StateFlow<UiState>`。
-- **作用域**: 始终使用 `screenModelScope`。
+- **框架**: 使用标准 **AndroidX ViewModel** (`androidx.lifecycle.ViewModel`)。
+- **状态暴露**: 统一使用 `StateFlow`。
+    - 内部使用 `private val _uiState = MutableStateFlow(...)`。
+    - 外部暴露 `val uiState = _uiState.asStateFlow()`。
+- **作用域**: 始终使用 `viewModelScope` 管理协程生命周期。
 
 ```kotlin
-class MyFeatureViewModel : StateScreenModel<MyState>(MyState.Loading) {
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+class MyFeatureViewModel : ViewModel() {
+
+    // Backing property
+    private val _uiState = MutableStateFlow<MyUiState>(MyUiState.Loading)
+    // Exposed immutable stream
+    val uiState = _uiState.asStateFlow()
+
     fun loadData() {
-        screenModelScope.launch { /* ... */ }
+        viewModelScope.launch { 
+            // Update state safely
+            _uiState.value = MyUiState.Success(data)
+        }
     }
 }
 ```

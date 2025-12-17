@@ -1,4 +1,4 @@
-package sophon.desktop.feature.taskrecord
+package sophon.desktop.feature.activitystack
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

@@ -1,14 +1,14 @@
 package sophon.desktop.feature.screen
 
-import cafe.adriel.voyager.core.model.ScreenModel
-import cafe.adriel.voyager.core.model.screenModelScope
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import sophon.desktop.core.Context
 
-class ScreenInfoViewModel : ScreenModel {
+class ScreenInfoViewModel : ViewModel() {
 
     private val dataSource = ScreenInfoDataSource()
 
@@ -16,7 +16,7 @@ class ScreenInfoViewModel : ScreenModel {
     val uiState = _uiState.asStateFlow()
 
     init {
-        screenModelScope.launch {
+        viewModelScope.launch {
             Context.stream.collect {
                 updateScreenInfo()
             }
@@ -42,28 +42,28 @@ class ScreenInfoViewModel : ScreenModel {
     fun modifyDensityInput(density: String) = _uiState.update { it.copy(inputDensity = density) }
 
     fun modifyResolution() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             dataSource.modifyResolution(_uiState.value.inputWidth, _uiState.value.inputHeight)
             updateScreenInfo()
         }
     }
 
     fun modifyDensity() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             dataSource.modifyDensity(_uiState.value.inputDensity)
             updateScreenInfo()
         }
     }
 
     fun resetResolution() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             dataSource.resetResolution()
             updateScreenInfo()
         }
     }
 
     fun resetDensity() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             dataSource.resetDensity()
             updateScreenInfo()
         }

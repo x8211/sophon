@@ -21,58 +21,53 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import cafe.adriel.voyager.core.model.rememberScreenModel
-import cafe.adriel.voyager.core.screen.Screen
+import androidx.lifecycle.viewmodel.compose.viewModel
 
-class DeviceInfoScreen : Screen {
+@Composable
+fun DeviceInfoScreen(viewModel: DeviceInfoViewModel = viewModel { DeviceInfoViewModel() }) {
+    val deviceInfoSections by viewModel.uiState.collectAsState()
+    val listState = rememberLazyListState()
 
-    @Composable
-    override fun Content() {
-        val deviceVM = rememberScreenModel { DeviceInfoViewModel() }
-        val deviceInfoSections by deviceVM.state.collectAsState()
-        val listState = rememberLazyListState()
-
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .simpleVerticalScrollbar(listState)
-        ) {
-            items(deviceInfoSections) { section ->
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+    LazyColumn(
+        state = listState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .simpleVerticalScrollbar(listState)
+    ) {
+        items(deviceInfoSections) { section ->
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(
+                        text = section.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
                     )
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(
-                            text = section.name,
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
 
-                        section.items.forEach { (key, value) ->
-                            Row(
-                                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = key,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = value,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.Magenta,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                    section.items.forEach { (key, value) ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = key,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = value,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Magenta,
+                                modifier = Modifier.weight(1f)
+                            )
                         }
+                        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                     }
                 }
             }

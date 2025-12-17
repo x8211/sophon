@@ -6,14 +6,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import cafe.adriel.voyager.navigator.Navigator
 import sophon.desktop.core.SocketClient
 import sophon.desktop.ui.theme.AppTheme
 
 @Composable
 @Preview
 fun App() {
-    Navigator(AppScreen())
+    AppTheme {
+        Surface(tonalElevation = 5.dp) {
+            SophonApp()
+        }
+    }
+
 }
 
 fun main() = application {
@@ -24,10 +28,6 @@ fun main() = application {
         },
         title = "Sophon UI"
     ) {
-        AppTheme {
-            Surface(tonalElevation = 5.dp) {
-                App()
-            }
-        }
+        App()
     }
 }

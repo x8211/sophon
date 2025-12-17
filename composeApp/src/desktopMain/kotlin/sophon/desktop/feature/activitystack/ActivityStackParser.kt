@@ -1,6 +1,6 @@
-package sophon.desktop.feature.taskrecord
+package sophon.desktop.feature.activitystack
 
-object ActivityTaskParser {
+object ActivityStackParser {
 
     fun parse(dumpsys: String): List<ActivityInfo> {
         //第一步：去掉每一行开头的空格

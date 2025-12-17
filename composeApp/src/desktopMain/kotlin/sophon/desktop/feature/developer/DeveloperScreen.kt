@@ -30,219 +30,213 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import cafe.adriel.voyager.core.model.rememberScreenModel
-import cafe.adriel.voyager.core.screen.Screen
-import sophon.desktop.processor.annotation.Slot
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 /**
  * 开发者选项页面
  */
-@Slot("开发者选项")
-class DeveloperScreen : Screen {
-    @Composable
-    override fun Content() {
-        val developerVM = rememberScreenModel { DeveloperViewModel() }
-        val uiState by developerVM.uiState.collectAsState()
+@Composable
+fun DeveloperScreen(viewModel: DeveloperViewModel = viewModel { DeveloperViewModel() }) {
+    val uiState by viewModel.uiState.collectAsState()
 
-        var showWindowScaleDialog by remember { mutableStateOf(false) }
-        var showTransitionScaleDialog by remember { mutableStateOf(false) }
-        var showAnimatorScaleDialog by remember { mutableStateOf(false) }
+    var showWindowScaleDialog by remember { mutableStateOf(false) }
+    var showTransitionScaleDialog by remember { mutableStateOf(false) }
+    var showAnimatorScaleDialog by remember { mutableStateOf(false) }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF5F5F5))
-        ) {
-            item {
-                CategorySection(
-                    title = "调试",
-                    options = debugOptions(uiState, developerVM)
-                )
-            }
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF5F5F5))
+    ) {
+        item {
+            CategorySection(
+                title = "调试",
+                options = debugOptions(uiState, viewModel)
+            )
+        }
 
-            item {
-                CategorySection(
-                    title = "输入",
-                    options = inputOptions(uiState, developerVM)
-                )
-            }
+        item {
+            CategorySection(
+                title = "输入",
+                options = inputOptions(uiState, viewModel)
+            )
+        }
 
-            item {
-                CategorySection(
-                    title = "绘图",
-                    options = drawingOptions(uiState, developerVM)
-                )
-            }
+        item {
+            CategorySection(
+                title = "绘图",
+                options = drawingOptions(uiState, viewModel)
+            )
+        }
 
-            item {
-                CategorySection(
-                    title = "动画",
-                    options = listOf(
-                        DeveloperOption(
-                            title = "窗口动画缩放",
-                            description = "窗口打开和关闭的动画速度调整",
-                            showAsScale = true,
-                            scaleValue = uiState.windowAnimationScale,
-                            onScaleClick = { showWindowScaleDialog = true }
-                        ),
-                        DeveloperOption(
-                            title = "过渡动画缩放",
-                            description = "应用程序切换时的动画速度调整",
-                            showAsScale = true,
-                            scaleValue = uiState.transitionAnimationScale,
-                            onScaleClick = { showTransitionScaleDialog = true }
-                        ),
-                        DeveloperOption(
-                            title = "Animator时长缩放",
-                            description = "应用程序内的动画速度调整",
-                            showAsScale = true,
-                            scaleValue = uiState.animatorDurationScale,
-                            onScaleClick = { showAnimatorScaleDialog = true }
-                        )
+        item {
+            CategorySection(
+                title = "动画",
+                options = listOf(
+                    DeveloperOption(
+                        title = "窗口动画缩放",
+                        description = "窗口打开和关闭的动画速度调整",
+                        showAsScale = true,
+                        scaleValue = uiState.windowAnimationScale,
+                        onScaleClick = { showWindowScaleDialog = true }
+                    ),
+                    DeveloperOption(
+                        title = "过渡动画缩放",
+                        description = "应用程序切换时的动画速度调整",
+                        showAsScale = true,
+                        scaleValue = uiState.transitionAnimationScale,
+                        onScaleClick = { showTransitionScaleDialog = true }
+                    ),
+                    DeveloperOption(
+                        title = "Animator时长缩放",
+                        description = "应用程序内的动画速度调整",
+                        showAsScale = true,
+                        scaleValue = uiState.animatorDurationScale,
+                        onScaleClick = { showAnimatorScaleDialog = true }
                     )
                 )
-            }
-
-            item {
-                CategorySection(
-                    title = "监控",
-                    options = monitoringOptions(uiState, developerVM)
-                )
-            }
-        }
-
-        if (showWindowScaleDialog) {
-            AnimationScaleDialog(
-                title = "窗口动画缩放",
-                currentScale = uiState.windowAnimationScale,
-                onScaleSelected = { scale -> developerVM.setWindowAnimationScale(scale) },
-                onDismiss = { showWindowScaleDialog = false }
             )
         }
 
-        if (showTransitionScaleDialog) {
-            AnimationScaleDialog(
-                title = "过渡动画缩放",
-                currentScale = uiState.transitionAnimationScale,
-                onScaleSelected = { scale -> developerVM.setTransitionAnimationScale(scale) },
-                onDismiss = { showTransitionScaleDialog = false }
-            )
-        }
-
-        if (showAnimatorScaleDialog) {
-            AnimationScaleDialog(
-                title = "Animator时长缩放",
-                currentScale = uiState.animatorDurationScale,
-                onScaleSelected = { scale -> developerVM.setAnimatorDurationScale(scale) },
-                onDismiss = { showAnimatorScaleDialog = false }
+        item {
+            CategorySection(
+                title = "监控",
+                options = monitoringOptions(uiState, viewModel)
             )
         }
     }
 
-    @Composable
-    private fun CategorySection(
-        title: String,
-        options: List<DeveloperOption>,
+    if (showWindowScaleDialog) {
+        AnimationScaleDialog(
+            title = "窗口动画缩放",
+            currentScale = uiState.windowAnimationScale,
+            onScaleSelected = { scale -> viewModel.setWindowAnimationScale(scale) },
+            onDismiss = { showWindowScaleDialog = false }
+        )
+    }
+
+    if (showTransitionScaleDialog) {
+        AnimationScaleDialog(
+            title = "过渡动画缩放",
+            currentScale = uiState.transitionAnimationScale,
+            onScaleSelected = { scale -> viewModel.setTransitionAnimationScale(scale) },
+            onDismiss = { showTransitionScaleDialog = false }
+        )
+    }
+
+    if (showAnimatorScaleDialog) {
+        AnimationScaleDialog(
+            title = "Animator时长缩放",
+            currentScale = uiState.animatorDurationScale,
+            onScaleSelected = { scale -> viewModel.setAnimatorDurationScale(scale) },
+            onDismiss = { showAnimatorScaleDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun CategorySection(
+    title: String,
+    options: List<DeveloperOption>,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
     ) {
+        // 分类标题
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFE3F2FD))
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                color = Color(0xFF1A1A1A)
+            )
+        }
+
+        // 选项列表
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(Color.White)
         ) {
-            // 分类标题
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFFE3F2FD))
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = Color(0xFF1A1A1A)
-                )
-            }
-
-            // 选项列表
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-            ) {
-                options.forEachIndexed { index, option ->
-                    SwitchItem(option)
-                    if (index < options.size - 1) {
-                        Divider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            color = Color(0xFFEEEEEE),
-                            thickness = 1.dp
-                        )
-                    }
+            options.forEachIndexed { index, option ->
+                SwitchItem(option)
+                if (index < options.size - 1) {
+                    Divider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = Color(0xFFEEEEEE),
+                        thickness = 1.dp
+                    )
                 }
             }
         }
     }
+}
 
-    @Composable
-    private fun SwitchItem(option: DeveloperOption) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+@Composable
+private fun SwitchItem(option: DeveloperOption) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier.weight(1f)
         ) {
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = option.title,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = Color(0xFF1A1A1A)
-                )
-                if (option.description.isNotBlank()) {
-                    Text(
-                        text = option.description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF666666),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-
-            if (option.showAsScale) {
-                AnimationScaleButton(
-                    value = option.scaleValue,
-                    onClick = option.onScaleClick
-                )
-            } else {
-                Switch(
-                    checked = option.checked,
-                    onCheckedChange = option.onCheckedChange,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.primary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        uncheckedThumbColor = Color(0xFFBDBDBD),
-                        uncheckedTrackColor = Color(0xFFE0E0E0)
-                    )
-                )
-            }
-        }
-    }
-
-    @Composable
-    private fun AnimationScaleButton(value: Float, onClick: () -> Unit) {
-        TextButton(onClick = onClick) {
             Text(
-                text = "${value}x",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.primary
+                text = option.title,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Medium
+                ),
+                color = Color(0xFF1A1A1A)
+            )
+            if (option.description.isNotBlank()) {
+                Text(
+                    text = option.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF666666),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+
+        if (option.showAsScale) {
+            AnimationScaleButton(
+                value = option.scaleValue,
+                onClick = option.onScaleClick
+            )
+        } else {
+            Switch(
+                checked = option.checked,
+                onCheckedChange = option.onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                    uncheckedThumbColor = Color(0xFFBDBDBD),
+                    uncheckedTrackColor = Color(0xFFE0E0E0)
+                )
             )
         }
+    }
+}
+
+@Composable
+private fun AnimationScaleButton(value: Float, onClick: () -> Unit) {
+    TextButton(onClick = onClick) {
+        Text(
+            text = "${value}x",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }
 

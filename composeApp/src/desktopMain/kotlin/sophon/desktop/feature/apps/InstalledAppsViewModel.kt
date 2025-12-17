@@ -3,12 +3,11 @@ package sophon.desktop.feature.apps
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import cafe.adriel.voyager.core.model.ScreenModel
-import cafe.adriel.voyager.core.model.screenModelScope
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
-import sophon.desktop.feature.apps.AppInfo
 
-class InstalledAppsViewModel : ScreenModel {
+class InstalledAppsViewModel : ViewModel() {
     private val repository = InstalledAppsRepository()
 
     var apps by mutableStateOf<List<AppInfo>>(emptyList())
@@ -27,7 +26,7 @@ class InstalledAppsViewModel : ScreenModel {
         private set
 
     fun loadApps() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             isLoading = true
             progress = 0f
             apps = repository.getInstalledApps { current, total ->

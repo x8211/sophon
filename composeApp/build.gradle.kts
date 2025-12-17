@@ -35,19 +35,17 @@ kotlin {
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(libs.serialization.json)
+            implementation(libs.androidx.navigation.compose)
+            implementation(libs.androidx.datastore)
+            implementation(libs.androidx.lifecycle.runtime.compose)
+            implementation(libs.androidx.lifecycle.viewmodel.compose)
+            implementation(compose.material3)
+            implementation(compose.materialIconsExtended)
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(project(":desktop-processor"))
-            implementation(libs.datastore)
-            implementation(compose.material3)
-            implementation(compose.materialIconsExtended)
-            implementation(libs.voyager.navigator)
-            implementation(libs.voyager.screenmodel)
-            implementation(libs.voyager.bottom.sheet.nav)
-            implementation(libs.voyager.tab.nav)
-            implementation(libs.voyager.transitions)
         }
         desktopTest.dependencies {
             implementation(kotlin("test"))

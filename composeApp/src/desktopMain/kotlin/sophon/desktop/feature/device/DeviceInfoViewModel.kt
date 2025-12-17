@@ -1,28 +1,22 @@
 package sophon.desktop.feature.device
 
-import cafe.adriel.voyager.core.model.StateScreenModel
-import cafe.adriel.voyager.core.model.screenModelScope
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import sophon.desktop.core.Context
 
-class DeviceInfoViewModel : StateScreenModel<List<DeviceInfoSection>>(emptyList()) {
+class DeviceInfoViewModel : ViewModel() {
+
+    private val _uiState = MutableStateFlow<List<DeviceInfoSection>>(emptyList())
+    val uiState = _uiState.asStateFlow()
 
     init {
-        screenModelScope.launch {
+        viewModelScope.launch {
             Context.stream.collect {
-                mutableState.value = parseGetProp(getProp())
+                _uiState.value = collectInfo()
             }
         }
     }
 }
-
-data class DeviceInfoSection(
-    val name: String,
-    val items: MutableList<DeviceInfoItem> = mutableListOf()
-) {
-    fun addItem(key: String, value: String) {
-        items.add(DeviceInfoItem(key, value))
-    }
-}
-
-data class DeviceInfoItem(val name: String, val value: String)

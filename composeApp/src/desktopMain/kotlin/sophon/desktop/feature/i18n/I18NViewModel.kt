@@ -1,28 +1,33 @@
 package sophon.desktop.feature.i18n
 
-import cafe.adriel.voyager.core.model.StateScreenModel
-import cafe.adriel.voyager.core.model.screenModelScope
-import sophon.desktop.core.Shell.simpleShell
-import sophon.desktop.datastore.i18nDataStore
-import sophon.desktop.datastore.projectDataStore
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import sophon.desktop.pb.Project
+import sophon.desktop.core.Shell.simpleShell
+import sophon.desktop.datastore.i18nDataStore
+import sophon.desktop.datastore.projectDataStore
 import sophon.desktop.pb.Module
+import sophon.desktop.pb.Project
 import java.io.File
 
 /**
  * 多语言功能ViewModel
  */
-class I18NViewModel : StateScreenModel<UiState>(UiState()) {
+class I18NViewModel : ViewModel() {
+
+    private val _uiState = MutableStateFlow(UiState())
+    val uiState = _uiState.asStateFlow()
 
     init {
-        screenModelScope.launch {
-            mutableState.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
             projectDataStore.data.collect {
-                mutableState.update { state ->
+                _uiState.update { state ->
                     state.copy(
                         project = it.absolutePath.toProjectStructure(),
                         isLoading = false
@@ -31,7 +36,7 @@ class I18NViewModel : StateScreenModel<UiState>(UiState()) {
             }
         }
 
-        screenModelScope.launch {
+        viewModelScope.launch {
             i18nDataStore.data.collect {
                 if (it.toolPath.isBlank()) {
                     try {
@@ -48,52 +53,52 @@ class I18NViewModel : StateScreenModel<UiState>(UiState()) {
                         val i18nToolPath =
                             shellCommand.simpleShell().substringAfter("i18n:", "").trim()
 
-                        mutableState.update { state -> state.copy(toolPath = i18nToolPath) }
+                        _uiState.update { state -> state.copy(toolPath = i18nToolPath) }
 
                     } catch (e: Exception) {
                         println("执行命令时出错: ${e.message}\n${e.stackTraceToString()}")
                     }
                 } else {
-                    mutableState.update { state -> state.copy(toolPath = it.toolPath) }
+                    _uiState.update { state -> state.copy(toolPath = it.toolPath) }
                 }
             }
         }
     }
 
-    fun updateToolPath(toolPath: String) = mutableState.update { it.copy(toolPath = toolPath) }
+    fun updateToolPath(toolPath: String) = _uiState.update { it.copy(toolPath = toolPath) }
 
     fun importProject(projectFilePath: String?) {
         if (projectFilePath == null) return
-        screenModelScope.launch {
-            mutableState.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
             val structure = projectFilePath.toProjectStructure()
             if (structure.isValid) projectDataStore.updateData {
                 it.copy(absolutePath = projectFilePath)
             }
-            mutableState.value = UiState(
+            _uiState.value = UiState(
                 project = structure,
-                toolPath = mutableState.value.toolPath
+                toolPath = _uiState.value.toolPath
             )
         }
     }
 
     fun importCsv(csvFilePath: String?) {
         csvFilePath ?: return
-        mutableState.update { it.copy(csvPath = csvFilePath) }
+        _uiState.update { it.copy(csvPath = csvFilePath) }
     }
 
     fun selectModule(modulePath: String) =
-        mutableState.update { it.copy(modulePath = modulePath) }
+        _uiState.update { it.copy(modulePath = modulePath) }
 
     fun setOverrideMode(overrideMode: Boolean) =
-        mutableState.update { it.copy(overrideMode = overrideMode) }
+        _uiState.update { it.copy(overrideMode = overrideMode) }
 
     fun updateCurrentStep(step: Int) {
-        mutableState.update { it.copy(currentStep = step) }
+        _uiState.update { it.copy(currentStep = step) }
     }
 
     fun updateSelectedTabIndex(index: Int) {
-        mutableState.update { it.copy(selectedTabIndex = index) }
+        _uiState.update { it.copy(selectedTabIndex = index) }
     }
 
     fun translate() {
@@ -101,11 +106,11 @@ class I18NViewModel : StateScreenModel<UiState>(UiState()) {
         clearOutput()
 
         // 执行后自动切换到输出选项卡
-        mutableState.update { it.copy(selectedTabIndex = 1) }
+        _uiState.update { it.copy(selectedTabIndex = 1) }
 
-        screenModelScope.launch {
+        viewModelScope.launch {
             try {
-                mutableState.update {
+                _uiState.update {
                     it.copy(
                         isExecuting = true,
                         executionCompleted = false,
@@ -115,27 +120,27 @@ class I18NViewModel : StateScreenModel<UiState>(UiState()) {
 
                 // 保存工具路径到DataStore
                 i18nDataStore.updateData {
-                    it.copy(toolPath = mutableState.value.toolPath)
+                    it.copy(toolPath = _uiState.value.toolPath)
                 }
 
                 // 保存项目路径到DataStore
                 projectDataStore.updateData {
-                    it.copy(absolutePath = mutableState.value.project.absolutePath)
+                    it.copy(absolutePath = _uiState.value.project.absolutePath)
                 }
 
                 // 执行i18n命令
-                val state = mutableState.value
+                val state = _uiState.value
                 val command = if (state.overrideMode) {
                     "${state.toolPath} append --src ${state.csvPath} --out ${state.modulePath}/src/main/res --nolint --prefer-new"
                 } else {
                     "${state.toolPath} append --src ${state.csvPath} --out ${state.modulePath}/src/main/res --nolint"
                 }
 
-                mutableState.update { it.copy(commandOutput = it.commandOutput + "执行命令: $command\n\n") }
+                _uiState.update { it.copy(commandOutput = it.commandOutput + "执行命令: $command\n\n") }
 
                 try {
                     val result = command.simpleShell()
-                    mutableState.update {
+                    _uiState.update {
                         it.copy(
                             commandOutput = it.commandOutput + result,
                             executionCompleted = true,
@@ -143,7 +148,7 @@ class I18NViewModel : StateScreenModel<UiState>(UiState()) {
                         )
                     }
                 } catch (e: Exception) {
-                    mutableState.update {
+                    _uiState.update {
                         it.copy(
                             commandOutput = it.commandOutput + "命令执行失败: ${e.message}\n"
                         )
@@ -151,23 +156,23 @@ class I18NViewModel : StateScreenModel<UiState>(UiState()) {
                     throw e
                 }
             } catch (e: Exception) {
-                mutableState.update {
+                _uiState.update {
                     it.copy(
                         commandOutput = it.commandOutput + "执行出错: ${e.message}\n${e.stackTraceToString()}"
                     )
                 }
             } finally {
-                mutableState.update { it.copy(isExecuting = false) }
+                _uiState.update { it.copy(isExecuting = false) }
             }
         }
     }
 
     fun clearOutput() {
-        mutableState.update { it.copy(commandOutput = "", executionCompleted = false) }
+        _uiState.update { it.copy(commandOutput = "", executionCompleted = false) }
     }
 
     fun reset() {
-        mutableState.update {
+        _uiState.update {
             it.copy(
                 project = Project(),
                 isLoading = false,

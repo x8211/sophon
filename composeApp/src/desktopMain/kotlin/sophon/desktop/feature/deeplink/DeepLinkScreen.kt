@@ -44,82 +44,77 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import cafe.adriel.voyager.core.model.rememberScreenModel
-import cafe.adriel.voyager.core.screen.Screen
-import sophon.desktop.processor.annotation.Slot
+import androidx.lifecycle.viewmodel.compose.viewModel
 import sophon.desktop.ui.components.OutputConsole
 
 /**
  * DeepLink 测试页面
  * 功能完全参考Deeplink Tester
  */
-@Slot("DeepLink")
-class DeepLinkScreen : Screen {
+@Composable
+fun DeepLinkScreen(
+    viewModel: DeepLinkViewModel = viewModel { DeepLinkViewModel() }
+) {
+    val output by viewModel.uiState.collectAsState()
+    val history by viewModel.history.collectAsState()
+    var uri by remember { mutableStateOf("") }
+    val clipboardManager = LocalClipboardManager.current
 
-    @Composable
-    override fun Content() {
-        val viewModel = rememberScreenModel { DeepLinkViewModel() }
-        val output by viewModel.state.collectAsState()
-        val history by viewModel.history.collectAsState()
-        var uri by remember { mutableStateOf("") }
-        val clipboardManager = LocalClipboardManager.current
-
-        Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            Column(
+    Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Input Area
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Input Area
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                OutlinedTextField(
+                    value = uri,
+                    onValueChange = { uri = it },
+                    label = { Text("Deep Link 链接") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Button(
+                    onClick = { viewModel.openDeepLink(uri) }
                 ) {
-                    OutlinedTextField(
-                        value = uri,
-                        onValueChange = { uri = it },
-                        label = { Text("Deep Link 链接") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    Button(
-                        onClick = { viewModel.openDeepLink(uri) }
-                    ) {
-                        Text("打开")
-                    }
+                    Text("打开")
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Middle: History List
-                HistoryList(
-                    history = history,
-                    onRun = {
-                        uri = it
-                        viewModel.openDeepLink(it)
-                    },
-                    onCopy = { clipboardManager.setText(AnnotatedString(it)) },
-                    onDelete = { viewModel.deleteHistory(it) },
-                    onFill = { uri = it },
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Bottom: Output Console
-                OutputConsole(
-                    output = output,
-                    onClear = { viewModel.clearOutput() },
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    placeholder = "运行结果将显示在这里"
-                )
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Middle: History List
+            HistoryList(
+                history = history,
+                onRun = {
+                    uri = it
+                    viewModel.openDeepLink(it)
+                },
+                onCopy = { clipboardManager.setText(AnnotatedString(it)) },
+                onDelete = { viewModel.deleteHistory(it) },
+                onFill = { uri = it },
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Bottom: Output Console
+            OutputConsole(
+                output = output,
+                onClear = { viewModel.clearOutput() },
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                placeholder = "运行结果将显示在这里"
+            )
         }
     }
 }
@@ -149,7 +144,12 @@ private fun HistoryList(
                     .padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.History, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                Icon(
+                    Icons.Default.History,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     "历史记录",
@@ -173,8 +173,8 @@ private fun HistoryList(
                         ListItem(
                             headlineContent = {
                                 Text(
-                                    link, 
-                                    maxLines = 1, 
+                                    link,
+                                    maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = Color.White
@@ -188,14 +188,35 @@ private fun HistoryList(
                                 .padding(vertical = 4.dp),
                             trailingContent = {
                                 Row {
-                                    IconButton(onClick = { onRun(link) }, modifier = Modifier.size(24.dp)) {
-                                        Icon(Icons.Default.PlayArrow, contentDescription = "运行", tint = Color.Green)
+                                    IconButton(
+                                        onClick = { onRun(link) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.PlayArrow,
+                                            contentDescription = "运行",
+                                            tint = Color.Green
+                                        )
                                     }
-                                    IconButton(onClick = { onCopy(link) }, modifier = Modifier.size(24.dp)) {
-                                        Icon(Icons.Default.ContentCopy, contentDescription = "复制", tint = Color.LightGray)
+                                    IconButton(
+                                        onClick = { onCopy(link) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.ContentCopy,
+                                            contentDescription = "复制",
+                                            tint = Color.LightGray
+                                        )
                                     }
-                                    IconButton(onClick = { onDelete(link) }, modifier = Modifier.size(24.dp)) {
-                                        Icon(Icons.Default.Delete, contentDescription = "删除", tint = Color.Red.copy(alpha = 0.7f))
+                                    IconButton(
+                                        onClick = { onDelete(link) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "删除",
+                                            tint = Color.Red.copy(alpha = 0.7f)
+                                        )
                                     }
                                 }
                             }

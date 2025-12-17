@@ -1,38 +1,43 @@
 package sophon.desktop.feature.proxy
 
-import cafe.adriel.voyager.core.model.StateScreenModel
-import cafe.adriel.voyager.core.model.screenModelScope
-import sophon.desktop.core.Context
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import sophon.desktop.core.Context
 import java.net.NetworkInterface
 
-class ProxyViewModel : StateScreenModel<ProxyInfo>(ProxyInfo()) {
+class ProxyViewModel : ViewModel() {
+
+    private val _uiState = MutableStateFlow(ProxyInfo())
+    val uiState = _uiState.asStateFlow()
 
     private val dataSource = ProxyDataSource()
 
     init {
-        screenModelScope.launch {
-            Context.stream.collect{
-                mutableState.update { ProxyInfo(dataSource.getProxy(), getIPAddress()) }
+        viewModelScope.launch {
+            Context.stream.collect {
+                _uiState.update { ProxyInfo(dataSource.getProxy(), getIPAddress()) }
             }
         }
     }
 
     fun setProxy(proxy: String) {
-        screenModelScope.launch {
+        viewModelScope.launch {
             dataSource.modifyProxy(proxy)
             delay(100)
-            mutableState.update { it.copy(current = dataSource.getProxy()) }
+            _uiState.update { it.copy(current = dataSource.getProxy()) }
         }
     }
 
     fun resetProxy() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             dataSource.resetProxy()
             delay(100)
-            mutableState.update { it.copy(current = dataSource.getProxy()) }
+            _uiState.update { it.copy(current = dataSource.getProxy()) }
         }
     }
 }

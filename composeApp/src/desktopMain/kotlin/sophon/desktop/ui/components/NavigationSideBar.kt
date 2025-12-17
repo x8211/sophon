@@ -32,12 +32,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import sophon.desktop.AppScreen
 
 @Composable
 fun NavigationSideBar(
-    items: List<Pair<String, String>>,
-    currentRoute: String?,
-    onNavigate: (String) -> Unit,
+    items: List<AppScreen>,
+    currentScreen: AppScreen,
+    onNavigate: (AppScreen) -> Unit,
     isExpanded: Boolean,
     onExpandChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
@@ -80,19 +81,15 @@ fun NavigationSideBar(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items.forEach { (title, className) ->
-                            val icon = remember(title) { getIconForTitle(title) }
-                            val selected = currentRoute == className
-
+                        items.forEach {
+                            val icon = remember(it.title) { getIconForTitle(it.title) }
                             NavigationRailItem(
-                                selected = selected,
-                                onClick = { onNavigate(className) },
-                                icon = {
-                                    Icon(icon, contentDescription = title)
-                                },
+                                selected = currentScreen == it,
+                                onClick = { onNavigate(it) },
+                                icon = { Icon(icon, contentDescription = it.title) },
                                 label = {
                                     Text(
-                                        title,
+                                        it.title,
                                         style = MaterialTheme.typography.labelSmall,
                                         maxLines = 1,
                                         softWrap = false

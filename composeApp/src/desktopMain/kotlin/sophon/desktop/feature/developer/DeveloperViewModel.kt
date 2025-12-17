@@ -1,21 +1,21 @@
 package sophon.desktop.feature.developer
 
-import cafe.adriel.voyager.core.model.ScreenModel
-import cafe.adriel.voyager.core.model.screenModelScope
-import sophon.desktop.core.Shell.oneshotShell
-import sophon.desktop.core.Shell.simpleShell
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import sophon.desktop.core.Shell.oneshotShell
+import sophon.desktop.core.Shell.simpleShell
 
-class DeveloperViewModel : ScreenModel {
+class DeveloperViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow(DeveloperUiState())
     val uiState = _uiState.asStateFlow()
 
     init {
-        screenModelScope.launch {
+        viewModelScope.launch {
             _uiState.value = DeveloperUiState(
                 debugLayout = getDebugLayout(),
                 hwUi = getHwUi(),
@@ -37,7 +37,7 @@ class DeveloperViewModel : ScreenModel {
      * 切换布局边界开关
      */
     fun toggleDebugLayout() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             "adb shell setprop debug.layout ${_uiState.value.debugLayout.not()}".simpleShell()
             refreshSetting()
             _uiState.update { it.copy(debugLayout = getDebugLayout()) }
@@ -48,7 +48,7 @@ class DeveloperViewModel : ScreenModel {
      * 切换HWUI呈现模式分析
      */
     fun toggleHwUi() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             "adb shell setprop debug.hwui.profile ${if (_uiState.value.hwUi) "false" else "visual_bars"}".simpleShell()
             refreshSetting()
             _uiState.update { it.copy(hwUi = getHwUi()) }
@@ -56,7 +56,7 @@ class DeveloperViewModel : ScreenModel {
     }
 
     fun toggleShowTouches() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             if (_uiState.value.showTouches) {
                 // 关闭显示触摸操作
                 "adb shell settings put system show_touches 0".simpleShell()
@@ -70,7 +70,7 @@ class DeveloperViewModel : ScreenModel {
     }
 
     fun togglePointerLocation() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             if (_uiState.value.pointerLocation) {
                 // 关闭指针位置
                 "adb shell settings put system pointer_location 0".simpleShell()
@@ -84,7 +84,7 @@ class DeveloperViewModel : ScreenModel {
     }
 
     fun toggleStrictMode() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             if (_uiState.value.strictMode) {
                 // 关闭严格模式
                 "adb shell setprop debug.strict 0".simpleShell()
@@ -109,7 +109,7 @@ class DeveloperViewModel : ScreenModel {
 
 
     fun toggleForceRtl() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             if (_uiState.value.forceRtl) {
                 // 关闭强制RTL布局
                 "adb shell settings put global development_force_rtl 0".simpleShell()
@@ -129,7 +129,7 @@ class DeveloperViewModel : ScreenModel {
     }
 
     fun toggleStayAwake() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             "adb shell settings put global stay_on_while_plugged_in ${if (_uiState.value.stayAwake) "0" else "3"}".simpleShell()
             refreshSetting()
             _uiState.update { it.copy(stayAwake = getStayAwake()) }
@@ -137,7 +137,7 @@ class DeveloperViewModel : ScreenModel {
     }
 
     fun toggleShowAllANRs() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             if (_uiState.value.showAllANRs) {
                 // 关闭显示所有ANR
                 "adb shell setprop debug.show_all_anrs 0".simpleShell()
@@ -158,7 +158,7 @@ class DeveloperViewModel : ScreenModel {
      * 切换不保留活动开关
      */
     fun toggleDontKeepActivities() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             if (_uiState.value.dontKeepActivities) {
                 // 关闭不保留活动
                 "adb shell settings put global always_finish_activities 0".simpleShell()
@@ -174,7 +174,7 @@ class DeveloperViewModel : ScreenModel {
     }
 
     fun toggleWindowAnimationScale() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             val newScale = when (_uiState.value.windowAnimationScale) {
                 0.0f -> 0.5f
                 0.5f -> 1.0f
@@ -189,7 +189,7 @@ class DeveloperViewModel : ScreenModel {
     }
 
     fun setWindowAnimationScale(scale: Float) {
-        screenModelScope.launch {
+        viewModelScope.launch {
             "adb shell settings put global window_animation_scale $scale".simpleShell()
             refreshSetting()
             _uiState.update { it.copy(windowAnimationScale = getWindowAnimationScale()) }
@@ -197,7 +197,7 @@ class DeveloperViewModel : ScreenModel {
     }
 
     fun toggleTransitionAnimationScale() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             val newScale = when (_uiState.value.transitionAnimationScale) {
                 0.0f -> 0.5f
                 0.5f -> 1.0f
@@ -212,7 +212,7 @@ class DeveloperViewModel : ScreenModel {
     }
 
     fun setTransitionAnimationScale(scale: Float) {
-        screenModelScope.launch {
+        viewModelScope.launch {
             "adb shell settings put global transition_animation_scale $scale".simpleShell()
             refreshSetting()
             _uiState.update { it.copy(transitionAnimationScale = getTransitionAnimationScale()) }
@@ -220,7 +220,7 @@ class DeveloperViewModel : ScreenModel {
     }
 
     fun toggleAnimatorDurationScale() {
-        screenModelScope.launch {
+        viewModelScope.launch {
             val newScale = when (_uiState.value.animatorDurationScale) {
                 0.0f -> 0.5f
                 0.5f -> 1.0f
@@ -235,7 +235,7 @@ class DeveloperViewModel : ScreenModel {
     }
 
     fun setAnimatorDurationScale(scale: Float) {
-        screenModelScope.launch {
+        viewModelScope.launch {
             "adb shell settings put global animator_duration_scale $scale".simpleShell()
             refreshSetting()
             _uiState.update { it.copy(animatorDurationScale = getAnimatorDurationScale()) }
