@@ -43,16 +43,16 @@ abstract class PackageAndroidDexTask @Inject constructor(
     }
 }
 
-tasks.register<PackageAndroidDexTask>("packageAndroidDexForDesktop") {
-    description = "打包Android release dex文件并复制到desktopMain/server文件夹"
-    group = "sophon"
-
-    // 依赖Android release构建任务
-    dependsOn("assembleRelease")
-
-    // 设置输入目录
-    dexDir.set(layout.buildDirectory.dir("intermediates/dex/release"))
-
-    // 设置输出目录
-    serverDir.set(layout.projectDirectory.dir("src/desktopMain/server"))
-}
+//tasks.register<PackageAndroidDexTask>("packageAndroidDexForDesktop") {
+//    description = "打包Android release dex文件并复制到desktopMain/server文件夹"
+//    group = "sophon"
+//
+//    // 依赖Android release构建任务
+//    dependsOn("assembleRelease")
+//
+//    // 设置输入目录
+//    dexDir.set(layout.buildDirectory.dir("intermediates/dex/release"))
+//
+//    // 设置输出目录
+//    serverDir.set(layout.projectDirectory.dir("src/desktopMain/server"))
+//}

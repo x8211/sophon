@@ -1,6 +1,9 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.text.SimpleDateFormat
+import java.util.Date
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -16,6 +19,31 @@ apply {
     from(file(rootProject.layout.projectDirectory.dir("gradle/app/package_dex_for_desktop.gradle.kts")))
 }
 
+val generateAppInfo by tasks.registering {
+    val outputDir = layout.buildDirectory.dir("generated/appInfo/kotlin")
+    val buildTimeStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
+    val appVersion = compose.desktop.application.nativeDistributions.packageVersion
+    inputs.property("version", appVersion)
+    inputs.property("buildTime", buildTimeStr)
+    outputs.dir(outputDir)
+
+    doLast {
+        val buildTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
+        val outputFile = outputDir.get().file("sophon/desktop/generated/AppInfo.kt").asFile
+        outputFile.parentFile.mkdirs()
+        outputFile.writeText(
+            """
+            package sophon.desktop.generated
+
+            object AppInfo {
+                const val APP_VERSION = "$appVersion"
+                const val BUILD_TIME = "$buildTime"
+            }
+            """.trimIndent()
+        )
+    }
+}
+
 kotlin {
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
@@ -27,7 +55,9 @@ kotlin {
     jvm("desktop")
 
     sourceSets {
-        val desktopMain by getting
+        val desktopMain by getting{
+            kotlin.srcDir(generateAppInfo.map { it.outputs.files.asPath })
+        }
         val desktopTest by getting // 添加测试源集
 
         androidMain.dependencies {
@@ -88,6 +118,10 @@ android {
     }
 }
 
+tasks.withType<KotlinCompile>().configureEach {
+    dependsOn(generateAppInfo)
+}
+
 dependencies {
 }
 
@@ -98,7 +132,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Sophon"
-            packageVersion = "1.0.0"
+            packageVersion = "1.0.1"
             includeAllModules = true
 
             macOS {

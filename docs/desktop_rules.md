@@ -2,33 +2,42 @@
 
 ## 1. 项目结构与模块划分 (Project Structure)
 
-遵循 **Feature-based**（按功能分包）的策略。
+遵循 **Feature-based**（按功能分包）且内部应用 **Clean Architecture** 的策略。
 
 ```text
 desktopMain/kotlin/sophon/desktop/
 ├── feature/                # 业务功能模块，按功能垂直切分
-│   ├── device/             # 示例：设备信息功能
-│   │   ├── DeviceInfoScreen.kt       # 视图 (View)
-│   │   ├── DeviceInfoViewModel.kt    # 逻辑 (ViewModel)
-│   │   └── GetPropDataSource.kt      # 数据源 (Data Source)
-│   ├── apps/               # 应用管理功能
-│   ├── deeplink/           # DeepLink 测试功能
-│   └── ...
+│   ├── [feature_name]/     # 功能模块内部采用 Clean Architecture
+│   │   ├── domain/         # 领域层：业务逻辑与抽象
+│   │   │   ├── model/      # 领域模型 (Data Class)
+│   │   │   ├── repository/ # 仓库接口定义
+│   │   │   └── usecase/    # 具体的业务用例 (UseCases)
+│   │   ├── data/           # 数据层：实现细节
+│   │   │   └── repository/ # 仓库接口实现 (Impl)
+│   │   └── ui/             # 界面层：展示逻辑
+│   │       ├── [Feature]Screen.kt    # Compose 页面
+│   │       └── [Feature]ViewModel.kt # ViewModel
 ├── ui/                     # 通用 UI 组件与系统
 │   ├── components/         # 全局通用的原子组件 (Buttons, Dialogs)
 │   └── theme/              # 主题配置 (Material 3)
 ├── core/                   # 核心基础库 (Shell, Context, SocketClient)
+│   ├── Context.kt          # 全局核心状态单例 (ADB, 设备管理)
+│   └── ...
 ├── datastore/              # 数据持久化存储
 ├── pb/                     # 协议定义 (Protocol Buffers)
 ├── AppScreen.kt            # 应用主路由/导航容器
-├── SophonViewModel.kt      # 应用级全局 ViewModel
 └── main.kt                 # 桌面端程序入口
 ```
 
 ### 规则 (Rules)
-- **新功能**: 在 `feature/` 下创建独立包，包含该功能所需的所有 UI、State 和 Logic。
+- **各层职责**:
+    - **Domain 层**: 必须是纯 Kotlin 库，不应依赖 Android 或 Desktop 框架类（如 `Context`, `compose`）。
+    - **Data 层**: 负责数据获取的具体实现，如 Shell 命令调用、网络请求或本地存储。
+    - **UI 层**: 仅负责渲染 UI 和处理用户交互，通过 UseCase 与 Domain 层通信。
+- **新功能**: 在 `feature/` 下创建独立包，并按上述结构划分三层。
+- **依赖方向**: 依赖关系必须是单向的：`UI -> Domain <- Data` (UI 和 Data 都依赖于 Domain)。
 - **组件**: 仅将高复用性、跨功能的组件放入 `ui/components`。
-- **全局状态**: 应用级别的状态维护在 `SophonViewModel.kt` 中。
+- **全局状态**: 核心全局状态（如 ADB 路径、已连接设备、选中的当前设备）维护在 `sophon.desktop.core.Context` 单例中。页面特定的局部业务状态仍使用各自的 `ViewModel`。
 
 ## 2. UI 开发规范 (UI Development)
 
@@ -67,17 +76,21 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class MyFeatureViewModel : ViewModel() {
+class MyFeatureViewModel(
+    private val getDataUseCase: GetDataUseCase // 注入 UseCase
+) : ViewModel() {
 
-    // Backing property
     private val _uiState = MutableStateFlow<MyUiState>(MyUiState.Loading)
-    // Exposed immutable stream
     val uiState = _uiState.asStateFlow()
 
     fun loadData() {
         viewModelScope.launch { 
-            // Update state safely
-            _uiState.value = MyUiState.Success(data)
+            try {
+                val data = getDataUseCase() // 调用领域层逻辑
+                _uiState.value = MyUiState.Success(data)
+            } catch (e: Exception) {
+                _uiState.value = MyUiState.Error(e.message)
+            }
         }
     }
 }
@@ -92,9 +105,12 @@ class MyFeatureViewModel : ViewModel() {
 ## 5. 命名与风格 (Naming & Style)
 
 - **文件命名**:
-    - `[Feature]Screen.kt`
-    - `[Feature]ViewModel.kt`
-    - `[Feature]DataSource.kt`
+    - `[Feature]Screen.kt`: UI 页面。
+    - `[Feature]ViewModel.kt`: UI 逻辑。
+    - `[Feature]Repository.kt`: 接口定义（放在 domain）。
+    - `[Feature]RepositoryImpl.kt`: 接口实现（放在 data）。
+    - `[Feature]UseCase.kt` 或 `DoSomethingUseCase.kt`: 业务用例。
+    - `[Feature]Model.kt`: 领域模型。
 - **Composables**:名词短语（PascalCase），返回 `Unit`，接受 `Modifier` 作为第一个可选参数。
 - **Kotlin**: 单行函数优先使用表达式体 (Expression Body)。UI State 优先使用 Data Classes。
 

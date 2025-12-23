@@ -1,0 +1,11 @@
+package sophon.desktop.feature.proxy.domain.model
+
+/**
+ * [current]当前代理
+ * [options]本机可选代理
+ */
+data class ProxyInfo(
+    val current: String = "",
+    val options: List<String> = emptyList(),
+    val proxyEnabled: Boolean = false
+)
