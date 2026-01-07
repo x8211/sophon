@@ -10,14 +10,14 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import sophon.desktop.core.Context
 import sophon.desktop.feature.thread.data.repository.ThreadRepositoryImpl
-import sophon.desktop.feature.thread.domain.model.ThreadInfo
+import sophon.desktop.feature.thread.domain.model.ProcessInfo
 import sophon.desktop.feature.thread.domain.usecase.ThreadUseCase
 
 class ThreadViewModel(
     private val useCase: ThreadUseCase = ThreadUseCase(ThreadRepositoryImpl())
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<List<ThreadInfo>>(emptyList())
+    private val _uiState = MutableStateFlow<ProcessInfo?>(null)
     val uiState = _uiState.asStateFlow()
 
     private val _ticker = MutableSharedFlow<Long>()
@@ -32,7 +32,7 @@ class ThreadViewModel(
         viewModelScope.launch {
             combine(Context.stream, _ticker) { _, _ -> Unit }
                 .collect {
-                    _uiState.value = useCase.getThreadsForForegroundApp()
+                    _uiState.value = useCase.getProcessForForegroundApp()
                 }
         }
     }

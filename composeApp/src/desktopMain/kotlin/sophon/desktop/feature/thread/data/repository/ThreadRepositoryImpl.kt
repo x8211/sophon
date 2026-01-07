@@ -2,6 +2,7 @@ package sophon.desktop.feature.thread.data.repository
 
 import sophon.desktop.core.Shell.oneshotShell
 import sophon.desktop.core.Shell.simpleShell
+import sophon.desktop.feature.thread.domain.model.ProcessInfo
 import sophon.desktop.feature.thread.domain.model.ThreadInfo
 import sophon.desktop.feature.thread.domain.repository.ThreadRepository
 
@@ -11,24 +12,40 @@ class ThreadRepositoryImpl : ThreadRepository {
         return "adb shell pidof $packageName".simpleShell()
     }
 
-    override suspend fun getThreadList(pid: String): List<ThreadInfo> {
+    override suspend fun getThreadList(pid: String, packageName: String): ProcessInfo? {
         return "adb shell ps -T -p $pid".oneshotShell { str ->
             val lines = str.split("\n").filter { it.isNotBlank() }
-            if (lines.isEmpty()) return@oneshotShell emptyList()
+            if (lines.isEmpty()) return@oneshotShell null
 
-            val original = lines.map { line ->
+            // 解析所有行
+            val parsedLines = lines.map { line ->
                 val data = line.replace(Regex("\\s+"), "%").split("%", limit = 10)
+                data
+            }
+
+            // 第一行是标题行,跳过
+            if (parsedLines.size < 2) return@oneshotShell null
+            
+            // 从第二行开始是实际数据
+            val dataLines = parsedLines.drop(1)
+            
+            // 提取进程级别的信息(从第一个数据行获取)
+            val firstDataLine = dataLines.firstOrNull()
+            if (firstDataLine == null || firstDataLine.size < 10) return@oneshotShell null
+            
+            val processUser = firstDataLine[0]
+            val processPid = firstDataLine[1]
+            val processPpid = firstDataLine[3]
+            val processVsz = firstDataLine[4]
+            val processRss = firstDataLine[5]
+            
+            // 解析所有线程信息
+            val threads = dataLines.mapNotNull { data ->
                 if (data.size < 10) {
-                   // Fallback or padding if line is malformed
-                   ThreadInfo(cmd = line)
+                    null
                 } else {
                     ThreadInfo(
-                        user = data[0],
-                        pid = data[1],
                         tid = data[2],
-                        ppid = data[3],
-                        vsz = data[4],
-                        rss = data[5],
                         wchan = data[6],
                         address = data[7],
                         state = data[8],
@@ -36,16 +53,19 @@ class ThreadRepositoryImpl : ThreadRepository {
                     )
                 }
             }
-
-            //第一行是标题行
-            val title = original.firstOrNull() ?: return@oneshotShell emptyList()
-            //去掉标题行后进行排序，再把标题行填充到第一位
-            val list = original
-                .takeLast(original.size - 1)
-                .sortedByDescending { it.state == "R" }
-                .toMutableList()
-            list.add(0, title)
-            list
+            
+            // 按状态排序:运行中的线程排在前面
+            val sortedThreads = threads.sortedByDescending { it.state == "R" }
+            
+            ProcessInfo(
+                user = processUser,
+                pid = processPid,
+                ppid = processPpid,
+                vsz = processVsz,
+                rss = processRss,
+                packageName = packageName,
+                threads = sortedThreads
+            )
         }
     }
 
