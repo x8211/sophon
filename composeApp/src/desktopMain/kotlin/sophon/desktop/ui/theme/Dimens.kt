@@ -10,6 +10,7 @@ object Dimens {
     
     val spacerSmall = 8.dp
     val spacerMedium = 16.dp
+    val spacerLarge = 24.dp
     
     val iconSizeSmall = 18.dp
     val iconSizeMedium = 24.dp
