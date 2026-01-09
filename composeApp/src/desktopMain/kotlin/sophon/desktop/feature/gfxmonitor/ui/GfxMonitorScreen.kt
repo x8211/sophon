@@ -1,11 +1,14 @@
 package sophon.desktop.feature.gfxmonitor.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,44 +17,55 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Window
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import sophon.desktop.feature.gfxmonitor.domain.model.DisplayData
+import sophon.desktop.feature.gfxmonitor.domain.model.GfxMetrics
 import sophon.desktop.feature.gfxmonitor.domain.model.ViewRootInfo
-import sophon.desktop.ui.theme.Dimens
+
+// 配色方案 - 高对比度
+private val PrimaryBlue = Color(0xFF2563EB)
+private val PurpleAccent = Color(0xFF7C3AED)
+private val OrangeWarning = Color(0xFFF97316)
+private val RedError = Color(0xFFDC2626)
+private val GreenSuccess = Color(0xFF16A34A)
+private val GrayText = Color(0xFF6B7280)
+private val LightGray = Color(0xFFF3F4F6)
+private val WhiteBackground = Color(0xFFFFFFFF)
 
 /**
  * 图形监测主屏幕
- * 核心优化版：聚合汇总信息，详情全宽展示
+ * 优化版：简洁布局、白色背景、高对比度配色、单列全宽、整体滚动
  */
 @Composable
 fun GfxMonitorScreen() {
@@ -66,191 +80,194 @@ fun GfxMonitorScreen() {
 
     val displayData = viewModel.displayData
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(LightGray)
     ) {
         if (displayData == null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(Dimens.spacerSmall))
-                    Text("正在获取 ADB 图形数据...", style = MaterialTheme.typography.bodySmall)
-                }
-            }
+            LoadingView()
         } else {
             GfxContent(displayData)
         }
     }
 }
 
+/**
+ * 加载视图
+ */
 @Composable
-private fun GfxContent(displayData: DisplayData) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(1), // 全宽排列
-        modifier = Modifier.fillMaxSize().padding(Dimens.paddingLarge),
-        verticalArrangement = Arrangement.spacedBy(Dimens.paddingLarge)
+private fun LoadingView() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
-        // 1. 汇总概览块
-        item {
-            GfxOverviewCard(displayData)
-        }
-
-        // 2. 详情标题
-        if (displayData.viewRootDetails.isNotEmpty()) {
-            item {
-                Text(
-                    "窗口详情 (${displayData.viewRootDetails.size})",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = Dimens.paddingMedium)
-                )
-            }
-
-            // 3. 各窗口详情卡片
-            items(displayData.viewRootDetails) { viewRoot ->
-                ViewRootDetailCard(viewRoot)
-            }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                strokeWidth = 4.dp,
+                color = PrimaryBlue
+            )
+            Text(
+                "正在获取 ADB 图形数据...",
+                style = MaterialTheme.typography.bodyLarge,
+                color = GrayText
+            )
         }
     }
 }
 
+/**
+ * 主内容区域 - 整体滚动
+ */
+@Composable
+private fun GfxContent(displayData: DisplayData) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(24.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        // 全局汇总卡片
+        item {
+            GlobalSummaryCard(displayData)
+        }
+
+        // 窗口详情标题
+        if (displayData.viewRootDetails.isNotEmpty()) {
+            item {
+                WindowsSectionHeader(displayData.viewRootDetails.size)
+            }
+        }
+
+        // 窗口详情列表 - 单列全宽
+        items(displayData.viewRootDetails) { viewRoot ->
+            WindowCard(viewRoot)
+        }
+    }
+}
+
+/**
+ * 全局汇总卡片 - 简化容器
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun GfxOverviewCard(displayData: DisplayData) {
+private fun GlobalSummaryCard(displayData: DisplayData) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = WhiteBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(modifier = Modifier.padding(Dimens.paddingLarge)) {
-            // 第一部分：应用包名与掉帧率核心指标
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            // 标题和包名
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = displayData.packageName.ifEmpty { "未识别当前应用" },
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(Dimens.paddingSmall))
+                Column {
                     Text(
-                        "图形性能汇总记录",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        "全局性能汇总",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        displayData.packageName.ifEmpty { "未识别应用" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = GrayText
                     )
                 }
 
-                Column(horizontalAlignment = Alignment.End) {
-                    val jankColor = getJankColor(displayData.globalMetrics.jankPercentage)
-                    Text(
-                        text = "${String.format("%.2f", displayData.globalMetrics.jankPercentage)}%",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = jankColor
-                    )
-                    Text(
-                        "掉帧率 (Janky Frames)",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                // 掉帧率大数字
+                JankPercentageBadge(displayData.globalMetrics.jankPercentage)
             }
 
-            Spacer(modifier = Modifier.height(Dimens.spacerMedium))
-            HorizontalDivider(modifier = Modifier.alpha(0.2f))
-            Spacer(modifier = Modifier.height(Dimens.spacerMedium))
+            Divider(color = LightGray, thickness = 1.dp)
 
-            // 第二部分：具体性能指标网格 (耗时分位值 + 视图统计)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                // 耗时详情
-                Column(modifier = Modifier.weight(1.5f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Speed, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("渲染耗时分位值 (ms)", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        MetricColumn("CPU", listOf(
-                            "P50" to displayData.globalMetrics.p50Cpu,
-                            "P90" to displayData.globalMetrics.p90Cpu,
-                            "P95" to displayData.globalMetrics.p95Cpu,
-                            "P99" to displayData.globalMetrics.p99Cpu
-                        ), Modifier.weight(1f))
-                        MetricColumn("GPU", listOf(
-                            "P50" to displayData.globalMetrics.p50Gpu,
-                            "P90" to displayData.globalMetrics.p90Gpu,
-                            "P95" to displayData.globalMetrics.p95Gpu,
-                            "P99" to displayData.globalMetrics.p99Gpu
-                        ), Modifier.weight(1f))
-                    }
-                }
-
-                // 结构统计
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.AccountTree, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("视图结构与内存", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OverviewSummaryItem("总窗口数", displayData.totalViewRootImpl.toString(), Icons.Default.AccountTree)
-                        OverviewSummaryItem("总视图数", displayData.totalViews.toString(), Icons.Default.Memory)
-                        
-                        Column {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("显存: ${displayData.renderNodeUsedMemory}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("总: ${displayData.renderNodeCapacityMemory}", style = MaterialTheme.typography.labelSmall)
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            LinearProgressIndicator(
-                                progress = { 0.5f },
-                                modifier = Modifier.fillMaxWidth().height(6.dp),
-                                strokeCap = StrokeCap.Round,
-                                color = MaterialTheme.colorScheme.secondary,
-                                trackColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
-                            )
-                        }
-                    }
-                }
+            // 指标网格
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // 帧统计
+                MetricItem(
+                    icon = Icons.Default.BarChart,
+                    iconColor = PrimaryBlue,
+                    label = "总帧数",
+                    value = displayData.globalMetrics.totalFrames.toString(),
+                    modifier = Modifier.weight(1f)
+                )
+                MetricItem(
+                    icon = Icons.Default.Error,
+                    iconColor = RedError,
+                    label = "掉帧数",
+                    value = displayData.globalMetrics.jankyFrames.toString(),
+                    modifier = Modifier.weight(1f)
+                )
+                MetricItem(
+                    icon = Icons.Default.Window,
+                    iconColor = PurpleAccent,
+                    label = "窗口数",
+                    value = displayData.totalViewRootImpl.toString(),
+                    modifier = Modifier.weight(1f)
+                )
+                MetricItem(
+                    icon = Icons.Default.Visibility,
+                    iconColor = GreenSuccess,
+                    label = "视图数",
+                    value = displayData.totalViews.toString(),
+                    modifier = Modifier.weight(1f)
+                )
             }
 
-            // 第三部分：全局原因分类
+            Divider(color = LightGray, thickness = 1.dp)
+
+            // CPU/GPU 性能
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                PerformanceColumn(
+                    title = "CPU 耗时 (ms)",
+                    color = PrimaryBlue,
+                    metrics = displayData.globalMetrics,
+                    isCpu = true,
+                    modifier = Modifier.weight(1f)
+                )
+                PerformanceColumn(
+                    title = "GPU 耗时 (ms)",
+                    color = PurpleAccent,
+                    metrics = displayData.globalMetrics,
+                    isCpu = false,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // 性能瓶颈
             if (displayData.globalMetrics.jankReasons.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(Dimens.spacerMedium))
-                HorizontalDivider(modifier = Modifier.alpha(0.2f))
-                Spacer(modifier = Modifier.height(Dimens.spacerSmall))
-                Text("全局性能瓶颈:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                Spacer(modifier = Modifier.height(4.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    displayData.globalMetrics.jankReasons.forEach { reason ->
-                        Surface(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                "${reason.description}: ${reason.count}",
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                Divider(color = LightGray, thickness = 1.dp)
+                
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "性能瓶颈",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = RedError
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        displayData.globalMetrics.jankReasons.forEach { reason ->
+                            ReasonTag(reason.description, reason.count)
                         }
                     }
                 }
@@ -259,157 +276,309 @@ private fun GfxOverviewCard(displayData: DisplayData) {
     }
 }
 
+/**
+ * 掉帧率徽章
+ */
 @Composable
-private fun OverviewSummaryItem(label: String, value: String, icon: ImageVector) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+private fun JankPercentageBadge(percentage: Float) {
+    val animatedPercentage by animateFloatAsState(
+        targetValue = percentage,
+        animationSpec = tween(durationMillis = 800)
+    )
+    
+    val color = when {
+        percentage > 15f -> RedError
+        percentage > 5f -> OrangeWarning
+        else -> GreenSuccess
+    }
+
+    Surface(
+        color = color.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                "${String.format("%.1f", animatedPercentage)}%",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = color
+            )
+            Text(
+                "掉帧率",
+                style = MaterialTheme.typography.labelSmall,
+                color = GrayText
+            )
+        }
+    }
+}
+
+/**
+ * 指标项
+ */
+@Composable
+private fun MetricItem(
+    icon: ImageVector,
+    iconColor: Color,
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         Box(
-            modifier = Modifier.size(32.dp).background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f), CircleShape),
+            modifier = Modifier
+                .size(48.dp)
+                .background(iconColor.copy(alpha = 0.1f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(24.dp)
+            )
         }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
-        }
+        Text(
+            value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall,
+            color = GrayText
+        )
     }
 }
 
+/**
+ * 性能列
+ */
 @Composable
-private fun MetricColumn(title: String, values: List<Pair<String, Float>>, modifier: Modifier) {
+private fun PerformanceColumn(
+    title: String,
+    color: Color,
+    metrics: GfxMetrics,
+    isCpu: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val values = if (isCpu) {
+        listOf(
+            "P50" to metrics.p50Cpu,
+            "P90" to metrics.p90Cpu,
+            "P95" to metrics.p95Cpu,
+            "P99" to metrics.p99Cpu
+        )
+    } else {
+        listOf(
+            "P50" to metrics.p50Gpu,
+            "P90" to metrics.p90Gpu,
+            "P95" to metrics.p95Gpu,
+            "P99" to metrics.p99Gpu
+        )
+    }
+
     Column(modifier = modifier) {
-        Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(4.dp))
-        values.forEach { (name, value) ->
+        Text(
+            title,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        values.forEach { (label, value) ->
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-                val color = if (value > 16.7f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                Text("${value}ms", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = color, fontSize = 11.sp)
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = GrayText
+                )
+                val valueColor = if (value > 16.7f) RedError else Color.Black
+                Text(
+                    String.format("%.1f", value),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = valueColor
+                )
+            }
+            if (label != "P99") {
+                Spacer(modifier = Modifier.height(4.dp))
             }
         }
     }
 }
 
+/**
+ * 原因标签
+ */
+@Composable
+private fun ReasonTag(description: String, count: Int) {
+    Surface(
+        color = RedError.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(6.dp)
+    ) {
+        Text(
+            "$description: $count",
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = RedError,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+/**
+ * 窗口区域标题
+ */
+@Composable
+private fun WindowsSectionHeader(count: Int) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(28.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(PrimaryBlue)
+        )
+        Column {
+            Text(
+                "各窗口详细指标",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+            Text(
+                "共 $count 个窗口",
+                style = MaterialTheme.typography.bodyMedium,
+                color = GrayText
+            )
+        }
+    }
+}
+
+/**
+ * 窗口卡片 - 单列全宽
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ViewRootDetailCard(viewRoot: ViewRootInfo) {
+private fun WindowCard(viewRoot: ViewRootInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = WhiteBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(modifier = Modifier.padding(Dimens.paddingLarge)) {
-            // Header: Name and Jank%
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // 标题行
             Row(
-                Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        viewRoot.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Memory, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            "附着视图: ${viewRoot.views} | 显存占用: ${viewRoot.renderNodeMemory}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                
-                Column(horizontalAlignment = Alignment.End) {
-                    val jankColor = getJankColor(viewRoot.metrics.jankPercentage)
-                    Surface(
-                        color = jankColor.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            "${String.format("%.1f", viewRoot.metrics.jankPercentage)}%",
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = jankColor
-                        )
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(Dimens.spacerMedium))
-            HorizontalDivider(modifier = Modifier.alpha(0.1f))
-            Spacer(modifier = Modifier.height(Dimens.spacerMedium))
-
-            // Metrics: Detailed Percentiles
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                MetricColumn("CPU Percentiles", listOf(
-                    "P50" to viewRoot.metrics.p50Cpu,
-                    "P90" to viewRoot.metrics.p90Cpu,
-                    "P95" to viewRoot.metrics.p95Cpu,
-                    "P99" to viewRoot.metrics.p99Cpu
-                ), Modifier.weight(1f))
-                MetricColumn("GPU Percentiles", listOf(
-                    "P50" to viewRoot.metrics.p50Gpu,
-                    "P90" to viewRoot.metrics.p90Gpu,
-                    "P95" to viewRoot.metrics.p95Gpu,
-                    "P99" to viewRoot.metrics.p99Gpu
-                ), Modifier.weight(1f))
-            }
-            
-            // Stats Footer
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                    "总渲染帧: ${viewRoot.metrics.totalFrames}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    viewRoot.name,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = Color.Black
                 )
-                Text(
-                    "掉帧数: ${viewRoot.metrics.jankyFrames}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = getJankColor(viewRoot.metrics.jankPercentage)
+                Spacer(modifier = Modifier.width(12.dp))
+                JankBadge(viewRoot.metrics.jankPercentage)
+            }
+
+            // 基本信息
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                InfoBox(
+                    icon = Icons.Default.Visibility,
+                    label = "视图",
+                    value = viewRoot.views.toString(),
+                    color = PrimaryBlue,
+                    modifier = Modifier.weight(1f)
+                )
+                InfoBox(
+                    icon = Icons.Default.Memory,
+                    label = "显存",
+                    value = viewRoot.renderNodeMemory,
+                    color = PurpleAccent,
+                    modifier = Modifier.weight(1f)
+                )
+                InfoBox(
+                    icon = Icons.Default.CheckCircle,
+                    label = "总帧",
+                    value = viewRoot.metrics.totalFrames.toString(),
+                    color = GreenSuccess,
+                    modifier = Modifier.weight(1f)
+                )
+                InfoBox(
+                    icon = Icons.Default.Error,
+                    label = "掉帧",
+                    value = viewRoot.metrics.jankyFrames.toString(),
+                    color = RedError,
+                    modifier = Modifier.weight(1f)
                 )
             }
 
-            // Reasons
+            Divider(color = LightGray, thickness = 1.dp)
+
+            // CPU/GPU 性能
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                PerformanceColumn(
+                    title = "CPU 耗时 (ms)",
+                    color = PrimaryBlue,
+                    metrics = viewRoot.metrics,
+                    isCpu = true,
+                    modifier = Modifier.weight(1f)
+                )
+                PerformanceColumn(
+                    title = "GPU 耗时 (ms)",
+                    color = PurpleAccent,
+                    metrics = viewRoot.metrics,
+                    isCpu = false,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // 性能瓶颈
             if (viewRoot.metrics.jankReasons.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(Dimens.spacerSmall))
-                HorizontalDivider(modifier = Modifier.alpha(0.1f))
-                Spacer(modifier = Modifier.height(Dimens.spacerSmall))
-                Text(
-                    "当前窗口瓶颈识别:",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    viewRoot.metrics.jankReasons.forEach { reason ->
-                        Surface(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                "${reason.description}: ${reason.count}",
-                                fontSize = 10.sp,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                Divider(color = LightGray, thickness = 1.dp)
+                
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "性能瓶颈",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = RedError
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        viewRoot.metrics.jankReasons.forEach { reason ->
+                            ReasonTag(reason.description, reason.count)
                         }
                     }
                 }
@@ -418,11 +587,70 @@ private fun ViewRootDetailCard(viewRoot: ViewRootInfo) {
     }
 }
 
+/**
+ * 掉帧徽章
+ */
 @Composable
-private fun getJankColor(percentage: Float): Color {
-    return when {
-        percentage > 15f -> Color(0xFFE74C3C)
-        percentage > 5f -> Color(0xFFF39C12)
-        else -> Color(0xFF27AE60)
+private fun JankBadge(percentage: Float) {
+    val color = when {
+        percentage > 15f -> RedError
+        percentage > 5f -> OrangeWarning
+        else -> GreenSuccess
+    }
+
+    Surface(
+        color = color.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Text(
+            "${String.format("%.1f", percentage)}%",
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+    }
+}
+
+/**
+ * 信息框
+ */
+@Composable
+private fun InfoBox(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        color = color.copy(alpha = 0.08f),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = GrayText,
+                fontSize = 10.sp
+            )
+        }
     }
 }
