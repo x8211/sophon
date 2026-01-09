@@ -17,7 +17,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.Android
-import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Dashboard
@@ -67,7 +66,6 @@ import sophon.desktop.core.Context
 import sophon.desktop.core.State
 import sophon.desktop.core.usage.featureUsageDataStore
 import sophon.desktop.feature.activitystack.ui.ActivityStackScreen
-import sophon.desktop.feature.apps.ui.InstalledAppsScreen
 import sophon.desktop.feature.deeplink.ui.DeepLinkScreen
 import sophon.desktop.feature.developer.ui.DeveloperScreen
 import sophon.desktop.feature.device.ui.DeviceInfoScreen
@@ -89,7 +87,6 @@ enum class AppScreen(val title: String) {
     Developer("开发者选项"),
     Deeplink("Deeplink"),
     InstallApk("安装Apk"),
-    InstalledApps("已安装应用"),
     ThreadInfo("线程信息"),
     SystemMonitor("系统监测"),
     GfxMonitor("图形监测"),
@@ -174,7 +171,6 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
                     composable(route = AppScreen.Developer.name) { DeveloperScreen() }
                     composable(route = AppScreen.Deeplink.name) { DeepLinkScreen() }
                     composable(route = AppScreen.InstallApk.name) { InstallApkScreen() }
-                    composable(route = AppScreen.InstalledApps.name) { InstalledAppsScreen() }
                     composable(route = AppScreen.I18N.name) { I18NScreen() }
                     composable(route = AppScreen.ThreadInfo.name) { ThreadScreen() }
                     composable(route = AppScreen.SystemMonitor.name) { SystemMonitorScreen() }
@@ -340,7 +336,6 @@ private fun getIconForTitle(title: String): ImageVector {
         AppScreen.ActivityStack.title -> Icons.Default.Dashboard
         AppScreen.Settings.title -> Icons.Default.Settings
         AppScreen.Developer.title -> Icons.Default.DeveloperMode
-        AppScreen.InstalledApps.title -> Icons.Default.Apps
         AppScreen.SystemMonitor.title -> Icons.Default.Monitor
         AppScreen.GfxMonitor.title -> Icons.Default.GraphicEq
         else -> Icons.Default.Extension
