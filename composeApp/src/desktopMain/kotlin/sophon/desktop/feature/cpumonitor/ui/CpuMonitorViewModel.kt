@@ -32,10 +32,10 @@ class CpuMonitorViewModel : ViewModel() {
      */
     fun startMonitoring(packageName: String? = null) {
         currentPackageName = packageName
-        
+
         // 取消之前的监测任务
         monitorJob?.cancel()
-        
+
         // 启动新的监测任务
         monitorJob = viewModelScope.launch {
             while (isActive) {
@@ -45,7 +45,7 @@ class CpuMonitorViewModel : ViewModel() {
                 } catch (e: Exception) {
                     _uiState.value = CpuMonitorUiState.Error(e.message ?: "未知错误")
                 }
-                
+
                 // 每2秒刷新一次
                 delay(2000)
             }

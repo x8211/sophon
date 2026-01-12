@@ -19,6 +19,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -142,6 +144,18 @@ private val threadDescriptions = mapOf(
  */
 @Composable
 fun ThreadScreen(viewModel: ThreadViewModel = viewModel { ThreadViewModel() }) {
+
+    // 启动监测
+    LaunchedEffect(Unit) {
+        viewModel.startMonitoring()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.stopMonitoring()
+        }
+    }
+
     val processInfo by viewModel.uiState.collectAsState()
 
     Column(

@@ -12,6 +12,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +29,17 @@ import sophon.desktop.feature.activitystack.domain.model.LifecycleComponent
 fun ActivityStackScreen(viewModel: ActivityStackViewModel = viewModel { ActivityStackViewModel() }) {
     val activities by viewModel.uiState.collectAsState()
     var selectedComponent by remember { mutableStateOf<LifecycleComponent?>(null) }
+
+    // 启动监测
+    LaunchedEffect(Unit) {
+        viewModel.startMonitoring()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.stopMonitoring()
+        }
+    }
 
     Row(modifier = Modifier.fillMaxSize()) {
         // 左列 - 组件列表 (1/2宽度)
