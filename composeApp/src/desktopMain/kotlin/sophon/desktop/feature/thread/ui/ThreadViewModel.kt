@@ -33,7 +33,6 @@ class ThreadViewModel(
             while (isActive) {
                 try {
                     _uiState.value = useCase.getProcessForForegroundApp()
-                    println("ThreadViewModel: $isActive")
                 } catch (_: Exception) {
                     _uiState.value = null
                 }

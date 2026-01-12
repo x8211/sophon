@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Language
@@ -71,6 +72,7 @@ import sophon.desktop.feature.cpumonitor.ui.CpuMonitorScreen
 import sophon.desktop.feature.deeplink.ui.DeepLinkScreen
 import sophon.desktop.feature.developer.ui.DeveloperScreen
 import sophon.desktop.feature.device.ui.DeviceInfoScreen
+import sophon.desktop.feature.fileexplorer.ui.FileExplorerScreen
 import sophon.desktop.feature.gfxmonitor.ui.GfxMonitorScreen
 import sophon.desktop.feature.i18n.ui.I18NScreen
 import sophon.desktop.feature.installapk.ui.InstallApkScreen
@@ -93,6 +95,7 @@ enum class AppScreen(val title: String) {
     SystemMonitor("系统监测"),
     GfxMonitor("图形监测"),
     CpuMonitor("CPU监测"),
+    FileExplorer("文件浏览器"),
     I18N("多语言"),
     Settings("设置"),
 }
@@ -179,6 +182,7 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
                     composable(route = AppScreen.SystemMonitor.name) { SystemMonitorScreen() }
                     composable(route = AppScreen.GfxMonitor.name) { GfxMonitorScreen() }
                     composable(route = AppScreen.CpuMonitor.name) { CpuMonitorScreen() }
+                    composable(route = AppScreen.FileExplorer.name) { FileExplorerScreen() }
                     composable(route = AppScreen.Settings.name) { SettingsScreen() }
                 }
             }
@@ -343,6 +347,7 @@ private fun getIconForTitle(title: String): ImageVector {
         AppScreen.SystemMonitor.title -> Icons.Default.Monitor
         AppScreen.GfxMonitor.title -> Icons.Default.GraphicEq
         AppScreen.CpuMonitor.title -> Icons.Default.Speed
+        AppScreen.FileExplorer.title -> Icons.Default.FolderOpen
         else -> Icons.Default.Extension
     }
 }
