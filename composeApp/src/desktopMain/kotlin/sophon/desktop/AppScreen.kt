@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Monitor
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,6 +67,7 @@ import sophon.desktop.core.Context
 import sophon.desktop.core.State
 import sophon.desktop.core.usage.featureUsageDataStore
 import sophon.desktop.feature.activitystack.ui.ActivityStackScreen
+import sophon.desktop.feature.cpumonitor.ui.CpuMonitorScreen
 import sophon.desktop.feature.deeplink.ui.DeepLinkScreen
 import sophon.desktop.feature.developer.ui.DeveloperScreen
 import sophon.desktop.feature.device.ui.DeviceInfoScreen
@@ -90,6 +92,7 @@ enum class AppScreen(val title: String) {
     ThreadInfo("线程信息"),
     SystemMonitor("系统监测"),
     GfxMonitor("图形监测"),
+    CpuMonitor("CPU监测"),
     I18N("多语言"),
     Settings("设置"),
 }
@@ -175,6 +178,7 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
                     composable(route = AppScreen.ThreadInfo.name) { ThreadScreen() }
                     composable(route = AppScreen.SystemMonitor.name) { SystemMonitorScreen() }
                     composable(route = AppScreen.GfxMonitor.name) { GfxMonitorScreen() }
+                    composable(route = AppScreen.CpuMonitor.name) { CpuMonitorScreen() }
                     composable(route = AppScreen.Settings.name) { SettingsScreen() }
                 }
             }
@@ -338,6 +342,7 @@ private fun getIconForTitle(title: String): ImageVector {
         AppScreen.Developer.title -> Icons.Default.DeveloperMode
         AppScreen.SystemMonitor.title -> Icons.Default.Monitor
         AppScreen.GfxMonitor.title -> Icons.Default.GraphicEq
+        AppScreen.CpuMonitor.title -> Icons.Default.Speed
         else -> Icons.Default.Extension
     }
 }
