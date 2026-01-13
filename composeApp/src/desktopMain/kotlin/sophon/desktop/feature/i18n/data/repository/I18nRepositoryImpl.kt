@@ -21,24 +21,26 @@ class I18nRepositoryImpl : I18nRepository {
             I18nProject(path, modules)
         }
 
-    override suspend fun findI18nToolPath(): String = withContext(Dispatchers.IO) {
-        try {
-            // 获取系统环境变量
-            val env = System.getenv()
-            val path = env["PATH"] ?: ""
-
-            // 使用whereis命令获取路径，并确保加载完整的shell环境
-            // 尝试更通用的 whereis 或 which
-            val shellCommand = """
-                export PATH='/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$path'
-                whereis i18n
-            """.trimIndent()
-
-            shellCommand.simpleShell().substringAfter("i18n:", "").trim()
-        } catch (e: Exception) {
-            println("执行命令时出错: ${e.message}\n${e.stackTraceToString()}")
-            ""
+    override suspend fun findI18nToolPath(): String {
+        // Compose Desktop 打包后的资源目录属性
+        val resourcesDir = System.getProperty("compose.application.resources.dir")
+        if (resourcesDir != null) {
+            // 打包模式：在资源目录下的 tools/i18n
+            val deployedI18N = File("/Applications/Sophon.app/Contents/Resources/tools", "i18n")
+            if (deployedI18N.exists()) {
+                return deployedI18N.absolutePath
+            }
         }
+
+        // Debug/开发模式：尝试多个可能的路径
+        val candidatePaths = listOf(
+            "composeApp/src/desktopMain/tools/i18n",
+            "src/desktopMain/tools/i18n",
+            "tools/i18n"
+        )
+
+        return candidatePaths.firstOrNull { File(it).exists() }
+            ?: File("composeApp/src/desktopMain/tools/i18n").absolutePath
     }
 
     override fun executeTranslation(config: I18nConfig): Flow<String> = flow {

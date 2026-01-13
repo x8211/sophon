@@ -15,7 +15,7 @@ plugins {
 }
 
 apply {
-    from(file(rootProject.layout.projectDirectory.dir("gradle/desktop/copy_adb_tools.gradle.kts")))
+    from(file(rootProject.layout.projectDirectory.dir("gradle/desktop/copy_distribution_tools.gradle.kts")))
 }
 
 val generateAppInfo by tasks.registering {

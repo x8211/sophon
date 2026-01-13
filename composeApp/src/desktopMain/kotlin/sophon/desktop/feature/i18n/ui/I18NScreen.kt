@@ -52,9 +52,8 @@ import sophon.desktop.ui.theme.filledTonalButtonColorsMd3
 import javax.swing.JFileChooser
 
 enum class I18NScreen(val title: String) {
-    Step1("选择工具"),
-    Step2("选择CSV文件"),
-    Step3("选择模块"),
+    Step1("选择CSV文件"),
+    Step2("选择模块"),
     StepConsole("控制台输出"),
 }
 
@@ -101,20 +100,13 @@ fun I18NScreen(
         }
 
         Column(modifier = Modifier.padding(Dimens.paddingMedium)) {
-            InfoItem(
-                label = "工具路径",
-                value = uiState.toolPath,
-                isValid = uiState.toolPath.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(I18NScreen.Step1.name) }
-            )
             Spacer(modifier = Modifier.height(Dimens.spacerSmall))
             InfoItem(
                 label = "CSV文件",
                 value = uiState.csvPath,
                 isValid = uiState.csvPath.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(I18NScreen.Step2.name) }
+                onClick = { navController.navigate(I18NScreen.Step1.name) }
             )
             Spacer(modifier = Modifier.height(Dimens.spacerSmall))
             InfoItem(
@@ -122,7 +114,7 @@ fun I18NScreen(
                 value = uiState.modulePath,
                 isValid = uiState.modulePath.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(I18NScreen.Step3.name) }
+                onClick = { navController.navigate(I18NScreen.Step2.name) }
             )
             Spacer(modifier = Modifier.height(Dimens.spacerSmall))
             CheckedInfoItem(
@@ -161,19 +153,12 @@ fun I18NScreen(
                 startDestination = I18NScreen.Step1.name,
             ) {
                 composable(route = I18NScreen.Step1.name) {
-                    I18NStep1Screen(
-                        uiState,
-                        onValueChange = { viewmodel.updateToolPath(it) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                composable(route = I18NScreen.Step2.name) {
                     I18NStep2Screen(
                         onFileSelected = { viewmodel.importCsv(it) },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
-                composable(route = I18NScreen.Step3.name) {
+                composable(route = I18NScreen.Step2.name) {
                     I18NStep3Screen(
                         project,
                         uiState,
