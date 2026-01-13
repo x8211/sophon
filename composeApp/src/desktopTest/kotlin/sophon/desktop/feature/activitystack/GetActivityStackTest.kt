@@ -2,9 +2,9 @@ package sophon.desktop.feature.activitystack
 
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
-import sophon.desktop.feature.activitystack.data.repository.ActivityStackRepositoryImpl
-import sophon.desktop.feature.activitystack.domain.model.LifecycleComponent
-import sophon.desktop.feature.activitystack.domain.usecase.GetActivityStackUseCase
+import sophon.desktop.feature.appmonitor.feature.activitystack.data.repository.ActivityStackRepositoryImpl
+import sophon.desktop.feature.appmonitor.feature.activitystack.domain.model.LifecycleComponent
+import sophon.desktop.feature.appmonitor.feature.activitystack.domain.usecase.GetActivityStackUseCase
 
 class GetActivityStackTest {
 

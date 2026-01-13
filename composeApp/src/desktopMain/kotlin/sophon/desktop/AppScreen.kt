@@ -22,15 +22,12 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Monitor
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,35 +64,27 @@ import kotlinx.coroutines.launch
 import sophon.desktop.core.Context
 import sophon.desktop.core.State
 import sophon.desktop.core.usage.featureUsageDataStore
-import sophon.desktop.feature.activitystack.ui.ActivityStackScreen
-import sophon.desktop.feature.cpumonitor.ui.CpuMonitorScreen
+import sophon.desktop.feature.appmonitor.ui.AppMonitorScreen
 import sophon.desktop.feature.deeplink.ui.DeepLinkScreen
 import sophon.desktop.feature.developer.ui.DeveloperScreen
 import sophon.desktop.feature.device.ui.DeviceInfoScreen
-import sophon.desktop.feature.fileexplorer.ui.FileExplorerScreen
-import sophon.desktop.feature.gfxmonitor.ui.GfxMonitorScreen
 import sophon.desktop.feature.i18n.ui.I18NScreen
 import sophon.desktop.feature.installapk.ui.InstallApkScreen
 import sophon.desktop.feature.proxy.ui.ProxyScreen
 import sophon.desktop.feature.settings.ui.SettingsScreen
 import sophon.desktop.feature.systemmonitor.ui.SystemMonitorScreen
-import sophon.desktop.feature.thread.ui.ThreadScreen
 import sophon.desktop.ui.theme.Dimens
 import sophon.desktop.ui.theme.inputChipColorsMd3
 import sophon.desktop.ui.theme.menuItemColorsMd3
 
 enum class AppScreen(val title: String) {
     Home("首页"),
-    ActivityStack("Activity栈"),
+    AppMonitor("应用监控"),
+    SystemMonitor("系统监控"),
     Proxy("设置代理"),
     Developer("开发者选项"),
     Deeplink("Deeplink"),
     InstallApk("安装Apk"),
-    ThreadInfo("线程信息"),
-    SystemMonitor("系统监测"),
-    GfxMonitor("图形监测"),
-    CpuMonitor("CPU监测"),
-    FileExplorer("文件浏览器"),
     I18N("多语言"),
     Settings("设置"),
 }
@@ -172,17 +161,13 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
                     modifier = Modifier.fillMaxSize()
                 ) {
                     composable(route = AppScreen.Home.name) { DeviceInfoScreen() }
-                    composable(route = AppScreen.ActivityStack.name) { ActivityStackScreen() }
+                    composable(route = AppScreen.AppMonitor.name) { AppMonitorScreen() }
+                    composable(route = AppScreen.SystemMonitor.name) { SystemMonitorScreen() }
                     composable(route = AppScreen.Proxy.name) { ProxyScreen() }
                     composable(route = AppScreen.Developer.name) { DeveloperScreen() }
                     composable(route = AppScreen.Deeplink.name) { DeepLinkScreen() }
                     composable(route = AppScreen.InstallApk.name) { InstallApkScreen() }
                     composable(route = AppScreen.I18N.name) { I18NScreen() }
-                    composable(route = AppScreen.ThreadInfo.name) { ThreadScreen() }
-                    composable(route = AppScreen.SystemMonitor.name) { SystemMonitorScreen() }
-                    composable(route = AppScreen.GfxMonitor.name) { GfxMonitorScreen() }
-                    composable(route = AppScreen.CpuMonitor.name) { CpuMonitorScreen() }
-                    composable(route = AppScreen.FileExplorer.name) { FileExplorerScreen() }
                     composable(route = AppScreen.Settings.name) { SettingsScreen() }
                 }
             }
@@ -341,13 +326,10 @@ private fun getIconForTitle(title: String): ImageVector {
         AppScreen.I18N.title -> Icons.Default.Language
         AppScreen.Deeplink.title -> Icons.Default.Link
         AppScreen.Proxy.title -> Icons.Default.Build
-        AppScreen.ActivityStack.title -> Icons.Default.Dashboard
+        AppScreen.AppMonitor.title -> Icons.Default.Dashboard
+        AppScreen.SystemMonitor.title -> Icons.Default.Monitor
         AppScreen.Settings.title -> Icons.Default.Settings
         AppScreen.Developer.title -> Icons.Default.DeveloperMode
-        AppScreen.SystemMonitor.title -> Icons.Default.Monitor
-        AppScreen.GfxMonitor.title -> Icons.Default.GraphicEq
-        AppScreen.CpuMonitor.title -> Icons.Default.Speed
-        AppScreen.FileExplorer.title -> Icons.Default.FolderOpen
         else -> Icons.Default.Extension
     }
 }

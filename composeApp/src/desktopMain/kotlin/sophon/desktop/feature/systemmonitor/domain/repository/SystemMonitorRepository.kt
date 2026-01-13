@@ -1,13 +1,14 @@
 package sophon.desktop.feature.systemmonitor.domain.repository
 
-import sophon.desktop.feature.systemmonitor.domain.model.TemperatureData
-
 /**
- * 系统监测数据仓库接口
+ * 系统监控仓库接口
+ *
+ * 定义获取系统信息的方法
  */
 interface SystemMonitorRepository {
+
     /**
-     * 获取温度数据
+     * 获取当前时间戳
      */
-    suspend fun getTemperatureData(): TemperatureData
+    suspend fun getTimestamp(): Long
 }
