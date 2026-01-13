@@ -30,5 +30,5 @@ interface AdbRepository {
     /**
      * 自动寻找 ADB 工具
      */
-    suspend fun autoFindAdbTool(): String?
+    suspend fun autoFindAdbTool(): String
 }

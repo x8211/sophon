@@ -4,7 +4,6 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -26,7 +25,7 @@ object Context {
     private val scope = MainScope()
 
     // 初始化数据层与领域层组件
-    private val adbRepository = AdbRepositoryImpl(scope)
+    private val adbRepository = AdbRepositoryImpl()
     private val getAdbStateUseCase = GetAdbStateUseCase(adbRepository)
     private val updateAdbPathUseCase = UpdateAdbPathUseCase(adbRepository)
     private val selectDeviceUseCase = SelectDeviceUseCase(adbRepository)
@@ -40,34 +39,20 @@ object Context {
             State(
                 status = adbState.status.toUiStatus(),
                 adbToolPath = adbState.adbToolPath,
-                adbToolAvailable = adbState.adbToolAvailable,
                 connectingDevices = adbState.connectingDevices,
                 selectedDevice = adbState.selectedDevice,
-                adbParentPath = adbState.adbParentPath
             )
         }.stateIn(scope, SharingStarted.Eagerly, State())
 
-    // 兼容性字段
-    val adbParentPath: String?
-        get() = stream.value.adbParentPath
-
     init {
-        // 定时轮询设备
         scope.launch {
+            // 初始化内置 ADB
+            val adbPath = autoFindAdbUseCase()
+            updateAdbPathUseCase(adbPath)
+            // 定时轮询设备
             while (true) {
                 refreshDevicesUseCase()
                 delay(3000)
-            }
-        }
-
-        // 初始检查与自动寻找
-        scope.launch {
-            val currentState = getAdbStateUseCase().first()
-            if (!currentState.adbToolAvailable) {
-                val foundPath = autoFindAdbUseCase()
-                if (foundPath != null) {
-                    updateAdbPathUseCase(foundPath)
-                }
             }
         }
     }
@@ -106,10 +91,8 @@ object Context {
 data class State(
     val status: Status = Status.Init,
     val adbToolPath: String = "",
-    val adbToolAvailable: Boolean = false,
     val connectingDevices: List<String> = emptyList(),
     val selectedDevice: String = "",
-    val adbParentPath: String? = null
 ) {
     sealed class Status(open val text: String = "") {
         object Init : Status("")

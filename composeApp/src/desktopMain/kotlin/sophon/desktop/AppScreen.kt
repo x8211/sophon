@@ -138,14 +138,12 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
                     Text(currentScreen.title, style = MaterialTheme.typography.titleLarge)
                 },
                 actions = {
-                    if (state.adbToolAvailable) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = Dimens.paddingSmall)
-                        ) {
-                            Text("已连接设备：", style = MaterialTheme.typography.titleSmall)
-                            AttachedDeviceDropdownMenu(state) { Context.selectDevice(it) }
-                        }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = Dimens.paddingSmall)
+                    ) {
+                        Text("已连接设备：", style = MaterialTheme.typography.titleSmall)
+                        AttachedDeviceDropdownMenu(state) { Context.selectDevice(it) }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

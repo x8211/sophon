@@ -12,7 +12,6 @@ class FormatAdbCommandUseCase {
 
         var command = input
         val selectedDevice = adbState.selectedDevice
-        val adbParentPath = adbState.adbParentPath
 
         // 是否有选中设备
         if (selectedDevice.isNotBlank()) {
@@ -24,6 +23,6 @@ class FormatAdbCommandUseCase {
             command = command.replace("adb", "cmd /c adb").replace("grep", "findstr")
         }
 
-        return if (adbParentPath != null) "$adbParentPath/$command" else command
+        return "${adbState.adbParentPath}/$command"
     }
 }

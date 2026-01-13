@@ -1,14 +1,10 @@
 package sophon.desktop.feature.adb.data.repository
 
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import sophon.desktop.core.Shell.oneshotShell
-import sophon.desktop.core.Shell.simpleShell
-import sophon.desktop.core.datastore.adbDataStore
 import sophon.desktop.feature.adb.domain.model.AdbState
 import sophon.desktop.feature.adb.domain.model.AdbStatus
 import sophon.desktop.feature.adb.domain.repository.AdbRepository
@@ -17,39 +13,14 @@ import java.io.File
 /**
  * AdbRepository 的实现类，负责具体的 ADB 操作逻辑
  */
-class AdbRepositoryImpl(scope: CoroutineScope) : AdbRepository {
+class AdbRepositoryImpl() : AdbRepository {
 
     private val _adbState = MutableStateFlow(AdbState())
-
-    init {
-        // 监听 DataStore 变化
-        scope.launch {
-            adbDataStore.data.collect { data ->
-                val adbPath = data.toolPath
-                val adbFile = File(adbPath)
-                val available = adbFile.isFile && adbFile.name.matches("^adb(\\.exe)?$".toRegex())
-
-                _adbState.update { state ->
-                    state.copy(
-                        adbToolPath = adbPath,
-                        adbToolAvailable = available,
-                        adbParentPath = if (available) adbFile.parentFile.absolutePath else null,
-                        status = if (available) AdbStatus.Success else AdbStatus.Fail("ADB 工具不可用")
-                    )
-                }
-
-                // 如果可用，自动刷新一次设备
-                if (available) {
-                    refreshDevices()
-                }
-            }
-        }
-    }
 
     override fun getAdbState(): StateFlow<AdbState> = _adbState.asStateFlow()
 
     override suspend fun updateAdbPath(path: String) {
-        adbDataStore.updateData { it.copy(toolPath = path) }
+        _adbState.update { it.copy(adbToolPath = path) }
     }
 
     override suspend fun selectDevice(deviceName: String) {
@@ -65,15 +36,8 @@ class AdbRepositoryImpl(scope: CoroutineScope) : AdbRepository {
     override suspend fun refreshDevices() {
         val state = _adbState.value
         val adbPath = state.adbToolPath
-        val adbFile = File(adbPath)
-        val available = adbFile.isFile && adbFile.name.matches("^adb(\\.exe)?$".toRegex())
 
-        if (!available) return
-
-        // 这里的 adb 执行可能需要完整的路径
-        val adbCmd = if (state.adbParentPath != null) "${state.adbParentPath}/adb" else "adb"
-
-        val devices = "$adbCmd devices".oneshotShell { result ->
+        val devices = "$adbPath devices".oneshotShell { result ->
             val pattern = Regex("^([a-zA-Z0-9-]+)\\s+device$", RegexOption.MULTILINE)
             pattern.findAll(result).map { mr -> mr.groupValues[1] }.toList()
         }
@@ -95,27 +59,34 @@ class AdbRepositoryImpl(scope: CoroutineScope) : AdbRepository {
         }
     }
 
-    override suspend fun autoFindAdbTool(): String? {
-        // ... 原有逻辑保持
-        val env = System.getenv()
-        val path = env["PATH"] ?: ""
-        val home = System.getProperty("user.home")
-
-        val androidSdkPath = "${home}/Library/Android/sdk"
-        val platformToolsPath = "$androidSdkPath/platform-tools"
-        val newPath =
-            "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$platformToolsPath:$path"
-
-        val shellCommand = """
-                export PATH='$newPath'
-                whereis adb
-            """.trimIndent()
-
-        val adbPath = shellCommand.simpleShell().substringAfter("adb:", "").trim()
-
-        if (adbPath.isNotBlank() && File(adbPath).isFile) {
-            return adbPath
+    override suspend fun autoFindAdbTool(): String {
+        val adbPath = resolveBuiltInAdbPath()
+        val adbFile = File(adbPath)
+        if (adbFile.exists() && !adbFile.canExecute()) {
+            adbFile.setExecutable(true)
         }
-        return null
+        return adbPath
+    }
+
+    private fun resolveBuiltInAdbPath(): String {
+        // Compose Desktop 打包后的资源目录属性
+        val resourcesDir = System.getProperty("compose.application.resources.dir")
+        if (resourcesDir != null) {
+            // 打包模式：在资源目录下的 tools/adb
+            val deployedAdb = File("/Applications/Sophon.app/Contents/Resources/tools", "adb")
+            if (deployedAdb.exists()) {
+                return deployedAdb.absolutePath
+            }
+        }
+
+        // Debug/开发模式：尝试多个可能的路径
+        val candidatePaths = listOf(
+            "composeApp/src/desktopMain/tools/adb",
+            "src/desktopMain/tools/adb",
+            "tools/adb"
+        )
+
+        return candidatePaths.firstOrNull { File(it).exists() }
+            ?: File("composeApp/src/desktopMain/tools/adb").absolutePath
     }
 }
