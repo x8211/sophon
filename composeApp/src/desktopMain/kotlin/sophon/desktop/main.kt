@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import sophon.desktop.core.SocketClient
 import sophon.desktop.ui.theme.AppTheme
 
 @Composable
@@ -23,7 +22,6 @@ fun App() {
 fun main() = application {
     Window(
         onCloseRequest = {
-            SocketClient.disconnect()
             exitApplication()
         },
         title = "Sophon UI"

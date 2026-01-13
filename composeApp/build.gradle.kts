@@ -15,8 +15,6 @@ plugins {
 }
 
 apply {
-    from(file(rootProject.layout.projectDirectory.dir("gradle/desktop/package_with_server_dex.gradle.kts")))
-    from(file(rootProject.layout.projectDirectory.dir("gradle/app/package_dex_for_desktop.gradle.kts")))
     from(file(rootProject.layout.projectDirectory.dir("gradle/desktop/copy_adb_tools.gradle.kts")))
 }
 
