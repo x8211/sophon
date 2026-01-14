@@ -54,18 +54,14 @@ class AppMonitorViewModel : ViewModel() {
         pollingJob = viewModelScope.launch {
             while (isActive) {
                 try {
-                    _errorMessage.value = null
-
                     val info = getForegroundAppInfoUseCase()
+                    _appInfo.value = info
+                    _errorMessage.value =
+                        if (info == null) "无法获取前台应用信息，请确保设备已连接且有应用在前台运行"
+                        else null
                     if (info != null) {
-                        // 每次都更新，确保子功能能及时获取最新包名
-                        _appInfo.value = info
                         // 递增刷新触发器，通知子功能刷新
                         _refreshTrigger.value += 1
-                    } else {
-                        _errorMessage.value =
-                            "无法获取前台应用信息，请确保设备已连接且有应用在前台运行"
-                        _appInfo.value = null
                     }
                 } catch (e: Exception) {
                     _errorMessage.value = "加载失败: ${e.message}"
@@ -108,5 +104,6 @@ class AppMonitorViewModel : ViewModel() {
 enum class AppMonitorFeature(val displayName: String) {
     THREAD("线程信息"),
     FILE_EXPLORER("文件浏览器"),
-    ACTIVITY_STACK("Activity栈")
+    ACTIVITY_STACK("Activity栈"),
+    GRAPHIC_MONITOR("图形监测")
 }

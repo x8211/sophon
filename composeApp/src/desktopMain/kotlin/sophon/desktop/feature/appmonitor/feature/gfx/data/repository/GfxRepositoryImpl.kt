@@ -1,19 +1,19 @@
-package sophon.desktop.feature.systemmonitor.feature.gfx.data.repository
+package sophon.desktop.feature.appmonitor.feature.gfx.data.repository
 
 import sophon.desktop.core.Shell.oneshotShell
-import sophon.desktop.feature.systemmonitor.feature.gfx.domain.model.DisplayData
-import sophon.desktop.feature.systemmonitor.feature.gfx.domain.model.GfxMetrics
-import sophon.desktop.feature.systemmonitor.feature.gfx.domain.model.JankReason
-import sophon.desktop.feature.systemmonitor.feature.gfx.domain.model.ViewRootInfo
-import sophon.desktop.feature.systemmonitor.feature.gfx.domain.repository.GfxRepository
+import sophon.desktop.core.Shell.simpleShell
+import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.DisplayData
+import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.GfxMetrics
+import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.JankReason
+import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.ViewRootInfo
+import sophon.desktop.feature.appmonitor.feature.gfx.domain.repository.GfxRepository
 
 class GfxRepositoryImpl : GfxRepository {
-    override suspend fun getDisplayData(): DisplayData {
+    override suspend fun getDisplayData(packageName: String): DisplayData {
         return try {
-            val packageName = getForegroundPackageName()
             if (packageName.isEmpty()) return DisplayData()
 
-            val output = "adb shell dumpsys gfxinfo $packageName framestats".oneshotShell { it }
+            val output = "adb shell dumpsys gfxinfo $packageName framestats".simpleShell()
 
             // 1. 解析全局统计指标 (通常在输出的最前面)
             val globalMetrics = parseGfxMetrics(output)

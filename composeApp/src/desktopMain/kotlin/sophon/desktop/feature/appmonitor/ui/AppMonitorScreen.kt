@@ -32,13 +32,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import sophon.desktop.feature.appmonitor.feature.activitystack.ui.ActivityStackScreen
 import sophon.desktop.feature.appmonitor.feature.fileexplorer.ui.FileExplorerScreen
+import sophon.desktop.feature.appmonitor.feature.gfx.ui.GfxMonitorScreen
 import sophon.desktop.feature.appmonitor.feature.thread.ui.ThreadScreen
 import sophon.desktop.ui.theme.Dimens
 
 /**
  * 应用监控主界面
  *
- * 整合线程信息、文件浏览器、Activity栈三个子功能
+ * 整合线程信息、文件浏览器、Activity栈、图形监测 四个子功能
  * 布局结构：
  * 1. 顶部：紧凑的应用信息栏（包名和debuggable状态）
  * 2. 中部：TabLayout子功能切换
@@ -76,6 +77,8 @@ fun AppMonitorScreen(
             errorMessage = errorMessage
         )
 
+        if (errorMessage != null) return@Column
+
         // 中部：TabLayout子功能选择
         FeatureTabRow(
             selectedFeature = selectedFeature,
@@ -98,6 +101,11 @@ fun AppMonitorScreen(
 
                 AppMonitorFeature.FILE_EXPLORER -> FileExplorerScreen(packageName = packageName)
                 AppMonitorFeature.ACTIVITY_STACK -> ActivityStackScreen(
+                    packageName = packageName,
+                    refreshTrigger = refreshTrigger
+                )
+
+                AppMonitorFeature.GRAPHIC_MONITOR -> GfxMonitorScreen(
                     packageName = packageName,
                     refreshTrigger = refreshTrigger
                 )

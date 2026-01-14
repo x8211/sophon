@@ -1,4 +1,4 @@
-package sophon.desktop.feature.systemmonitor.feature.gfx.ui
+package sophon.desktop.feature.appmonitor.feature.gfx.ui
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -31,7 +31,7 @@ import androidx.compose.material.icons.filled.Window
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -49,9 +49,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import sophon.desktop.feature.systemmonitor.feature.gfx.domain.model.DisplayData
-import sophon.desktop.feature.systemmonitor.feature.gfx.domain.model.GfxMetrics
-import sophon.desktop.feature.systemmonitor.feature.gfx.domain.model.ViewRootInfo
+import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.DisplayData
+import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.GfxMetrics
+import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.ViewRootInfo
+import java.util.Locale
 
 // 配色方案 - 高对比度
 private val PrimaryBlue = Color(0xFF2563EB)
@@ -69,12 +70,15 @@ private val WhiteBackground = Color(0xFFFFFFFF)
  */
 @Composable
 fun GfxMonitorScreen(
+    packageName: String?,
     refreshTrigger: Long = 0,
     viewModel: GfxViewModel = viewModel { GfxViewModel() }
 ) {
 
-    LaunchedEffect(refreshTrigger) {
-        viewModel.refresh()
+    LaunchedEffect(packageName, refreshTrigger) {
+        if (packageName != null) {
+            viewModel.refresh(packageName)
+        }
     }
 
     val displayData = viewModel.displayData
@@ -89,8 +93,6 @@ fun GfxMonitorScreen(
             LoadingView()
         } else if (displayData != null) {
             GfxContent(displayData)
-        } else if (isRefreshing) {
-            LoadingView()
         }
     }
 }
@@ -192,7 +194,7 @@ private fun GlobalSummaryCard(displayData: DisplayData) {
                 JankPercentageBadge(displayData.globalMetrics.jankPercentage)
             }
 
-            Divider(color = LightGray, thickness = 1.dp)
+            HorizontalDivider(color = LightGray, thickness = 1.dp)
 
             // 指标网格
             Row(
@@ -230,7 +232,7 @@ private fun GlobalSummaryCard(displayData: DisplayData) {
                 )
             }
 
-            Divider(color = LightGray, thickness = 1.dp)
+            HorizontalDivider(color = LightGray, thickness = 1.dp)
 
             // CPU/GPU 性能
             Row(
@@ -255,7 +257,7 @@ private fun GlobalSummaryCard(displayData: DisplayData) {
 
             // 性能瓶颈
             if (displayData.globalMetrics.jankReasons.isNotEmpty()) {
-                Divider(color = LightGray, thickness = 1.dp)
+                HorizontalDivider(color = LightGray, thickness = 1.dp)
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -303,7 +305,7 @@ private fun JankPercentageBadge(percentage: Float) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                "${String.format("%.1f", animatedPercentage)}%",
+                "${"%.1f".format(Locale.getDefault(), animatedPercentage)}%",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = color
@@ -407,7 +409,7 @@ private fun PerformanceColumn(
                 )
                 val valueColor = if (value > 16.7f) RedError else Color.Black
                 Text(
-                    String.format("%.1f", value),
+                    "%.1f".format(Locale.getDefault(), value),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = valueColor
@@ -541,7 +543,7 @@ private fun WindowCard(viewRoot: ViewRootInfo) {
                 )
             }
 
-            Divider(color = LightGray, thickness = 1.dp)
+            HorizontalDivider(color = LightGray, thickness = 1.dp)
 
             // CPU/GPU 性能
             Row(
@@ -566,7 +568,7 @@ private fun WindowCard(viewRoot: ViewRootInfo) {
 
             // 性能瓶颈
             if (viewRoot.metrics.jankReasons.isNotEmpty()) {
-                Divider(color = LightGray, thickness = 1.dp)
+                HorizontalDivider(color = LightGray, thickness = 1.dp)
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -605,7 +607,7 @@ private fun JankBadge(percentage: Float) {
         shape = RoundedCornerShape(8.dp)
     ) {
         Text(
-            "${String.format("%.1f", percentage)}%",
+            "${"%.1f".format(Locale.getDefault(), percentage)}%",
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,

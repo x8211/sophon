@@ -1,4 +1,4 @@
-package sophon.desktop.feature.systemmonitor.feature.gfx.domain.model
+package sophon.desktop.feature.appmonitor.feature.gfx.domain.model
 
 /**
  * 通用的图形性能指标

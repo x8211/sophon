@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -212,7 +212,7 @@ private fun CategorySection(
                 }
 
                 if (index < options.size - 1) {
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 16.dp),
                         color = Color(0xFFEEEEEE),
                         thickness = 1.dp

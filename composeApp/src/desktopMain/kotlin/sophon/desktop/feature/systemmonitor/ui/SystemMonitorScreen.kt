@@ -26,7 +26,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import sophon.desktop.feature.systemmonitor.feature.cpu.ui.CpuScreen
-import sophon.desktop.feature.systemmonitor.feature.gfx.ui.GfxMonitorScreen
 import sophon.desktop.feature.systemmonitor.feature.temperature.ui.TemperatureScreen
 import sophon.desktop.ui.theme.Dimens
 
@@ -83,7 +82,6 @@ fun SystemMonitorScreen(
             // 将刷新触发器传递给子功能
             when (selectedFeature) {
                 SystemMonitorFeature.TEMPERATURE -> TemperatureScreen(refreshTrigger)
-                SystemMonitorFeature.GFX_MONITOR -> GfxMonitorScreen(refreshTrigger)
                 SystemMonitorFeature.CPU_MONITOR -> CpuScreen(refreshTrigger)
             }
         }
@@ -163,6 +161,5 @@ private fun FeatureTabRow(
  */
 enum class SystemMonitorFeature(val displayName: String) {
     TEMPERATURE("温度监测"),
-    GFX_MONITOR("图形监测"),
     CPU_MONITOR("CPU监测")
 }

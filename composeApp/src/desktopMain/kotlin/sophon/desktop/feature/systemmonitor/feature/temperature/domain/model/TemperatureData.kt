@@ -1,6 +1,6 @@
 package sophon.desktop.feature.systemmonitor.feature.temperature.domain.model
 
-import sophon.desktop.feature.systemmonitor.feature.gfx.domain.model.DisplayData
+import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.DisplayData
 
 /**
  * 系统监测数据点

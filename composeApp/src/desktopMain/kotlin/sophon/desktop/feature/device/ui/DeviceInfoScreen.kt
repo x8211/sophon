@@ -12,7 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -71,7 +71,7 @@ fun DeviceInfoScreen(viewModel: DeviceInfoViewModel = viewModel { DeviceInfoView
                                 modifier = Modifier.weight(1f)
                             )
                         }
-                        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                     }
                 }
             }

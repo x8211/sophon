@@ -32,13 +32,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import sophon.desktop.ui.components.DefaultListItem
 import sophon.desktop.ui.components.OutputConsole
 import sophon.desktop.ui.components.SectionTitle
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 
 /**
  * DeepLink 测试页面
@@ -51,7 +51,6 @@ fun DeepLinkScreen(
     val output by viewModel.uiState.collectAsState()
     val history by viewModel.history.collectAsState()
     var uri by remember { mutableStateOf("") }
-    val clipboardManager = LocalClipboardManager.current
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -87,7 +86,10 @@ fun DeepLinkScreen(
                     uri = it
                     viewModel.openDeepLink(it)
                 },
-                onCopy = { clipboardManager.setText(AnnotatedString(it)) },
+                onCopy = {
+                    val selection = StringSelection(it)
+                    Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, selection)
+                },
                 onDelete = { viewModel.deleteHistory(it) },
                 onFill = { uri = it },
                 modifier = Modifier

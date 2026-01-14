@@ -24,18 +24,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,12 +62,13 @@ import sophon.desktop.feature.appmonitor.feature.fileexplorer.domain.model.FileI
 import sophon.desktop.feature.device.ui.simpleVerticalScrollbar
 import sophon.desktop.ui.theme.Dimens
 import java.awt.Cursor
+import java.util.Locale
 
 /**
  * 文件浏览器主界面
- * 
+ *
  * 显示应用的目录结构,支持目录导航
- * 
+ *
  * @param packageName 应用包名，由主页面传入
  * @param viewModel ViewModel实例
  */
@@ -82,9 +83,9 @@ fun FileExplorerScreen(
             viewModel.loadAppDirectories(packageName)
         }
     }
-    
+
     val uiState by viewModel.uiState.collectAsState()
-    
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -95,12 +96,14 @@ fun FileExplorerScreen(
             is FileExplorerUiState.Loading -> {
                 LoadingView()
             }
+
             is FileExplorerUiState.ShowDirectories -> {
                 DirectorySelectionView(
                     appInfo = state.appInfo,
                     onDirectoryClick = { viewModel.browseDirectory(it) }
                 )
             }
+
             is FileExplorerUiState.ShowFiles -> {
                 FileListView(
                     currentPath = state.currentPath,
@@ -116,6 +119,7 @@ fun FileExplorerScreen(
                     onRefreshClick = { viewModel.refresh() }
                 )
             }
+
             is FileExplorerUiState.ShowFileContent -> {
                 FileContentView(
                     fileName = state.fileName,
@@ -125,6 +129,7 @@ fun FileExplorerScreen(
                     onBackClick = { viewModel.backToFileList() }
                 )
             }
+
             is FileExplorerUiState.Error -> {
                 ErrorView(
                     message = state.message,
@@ -163,7 +168,7 @@ private fun LoadingView() {
 
 /**
  * 目录选择视图
- * 
+ *
  * 显示应用的各个目录入口
  */
 @Composable
@@ -213,9 +218,9 @@ private fun DirectorySelectionView(
                 }
             }
         }
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         // 数据目录卡片
         DirectoryCard(
             title = "数据目录",
@@ -224,7 +229,7 @@ private fun DirectorySelectionView(
             icon = Icons.Default.Storage,
             onClick = { onDirectoryClick(appInfo.dataDir) }
         )
-        
+
         // 缓存目录卡片
         DirectoryCard(
             title = "内部缓存目录",
@@ -233,7 +238,7 @@ private fun DirectorySelectionView(
             icon = Icons.Default.FolderOpen,
             onClick = { onDirectoryClick(appInfo.cacheDir) }
         )
-        
+
         // 外部缓存目录卡片
         appInfo.externalCacheDir?.let { externalCache ->
             DirectoryCard(
@@ -285,7 +290,7 @@ private fun DirectoryCard(
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
-            
+
             // 文本信息
             Column(
                 modifier = Modifier.weight(1f),
@@ -325,7 +330,7 @@ private fun FileListView(
     onRefreshClick: () -> Unit
 ) {
     val listState = rememberLazyListState()
-    
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacerSmall)
@@ -342,12 +347,12 @@ private fun FileListView(
             ) {
                 IconButton(onClick = onBackClick) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "返回",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
-                
+
                 Text(
                     text = currentPath,
                     style = MaterialTheme.typography.titleMedium,
@@ -358,7 +363,7 @@ private fun FileListView(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            
+
             IconButton(onClick = onRefreshClick) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
@@ -367,9 +372,9 @@ private fun FileListView(
                 )
             }
         }
-        
-        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-        
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+
         // 文件列表
         if (files.isEmpty()) {
             Box(
@@ -414,7 +419,7 @@ private fun FileItemRow(
     } else {
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     }
-    
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -428,7 +433,7 @@ private fun FileItemRow(
     ) {
         // 图标
         Icon(
-            imageVector = if (file.isDirectory) Icons.Default.Folder else Icons.Default.InsertDriveFile,
+            imageVector = if (file.isDirectory) Icons.Default.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,
             contentDescription = if (file.isDirectory) "目录" else "文件",
             modifier = Modifier.size(32.dp),
             tint = if (file.isDirectory) {
@@ -437,7 +442,7 @@ private fun FileItemRow(
                 MaterialTheme.colorScheme.onSurfaceVariant
             }
         )
-        
+
         // 文件信息
         Column(
             modifier = Modifier.weight(1f),
@@ -451,7 +456,7 @@ private fun FileItemRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -460,13 +465,13 @@ private fun FileItemRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
+
                 Text(
                     text = "${file.owner}:${file.group}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
+
                 file.size?.let { size ->
                     Text(
                         text = formatFileSize(size),
@@ -476,7 +481,7 @@ private fun FileItemRow(
                 }
             }
         }
-        
+
         // 修改时间
         Text(
             text = file.modifiedTime,
@@ -508,13 +513,13 @@ private fun ErrorView(
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.error
             )
-            
+
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            
+
             Button(onClick = onRetry) {
                 Text("重试")
             }
@@ -524,7 +529,7 @@ private fun ErrorView(
 
 /**
  * 格式化文件大小
- * 
+ *
  * @param bytes 字节数
  * @return 格式化后的字符串(如 "1.5 KB", "2.3 MB")
  */
@@ -532,18 +537,18 @@ private fun formatFileSize(bytes: Long): String {
     val kb = 1024.0
     val mb = kb * 1024
     val gb = mb * 1024
-    
+
     return when {
-        bytes >= gb -> String.format("%.2f GB", bytes / gb)
-        bytes >= mb -> String.format("%.2f MB", bytes / mb)
-        bytes >= kb -> String.format("%.2f KB", bytes / kb)
+        bytes >= gb -> "%.2f GB".format(Locale.getDefault(), bytes / gb)
+        bytes >= mb -> "%.2f MB".format(Locale.getDefault(), bytes / mb)
+        bytes >= kb -> "%.2f KB".format(Locale.getDefault(), bytes / kb)
         else -> "$bytes B"
     }
 }
 
 /**
  * 文件内容查看器
- * 
+ *
  * @param fileName 文件名
  * @param filePath 文件路径
  * @param content 文件内容
@@ -559,7 +564,7 @@ private fun FileContentView(
     onBackClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
-    
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacerSmall)
@@ -576,12 +581,12 @@ private fun FileContentView(
             ) {
                 IconButton(onClick = onBackClick) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "返回",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
-                
+
                 Column {
                     Text(
                         text = fileName,
@@ -598,7 +603,7 @@ private fun FileContentView(
                     )
                 }
             }
-            
+
             // 文件类型标签
             Surface(
                 color = if (isXml) {
@@ -621,9 +626,9 @@ private fun FileContentView(
                 )
             }
         }
-        
-        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-        
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+
         // 内容显示区域
         Card(
             modifier = Modifier
@@ -661,7 +666,7 @@ private fun FileContentView(
                         }
                     }
                 }
-                
+
                 // 滚动条
                 VerticalScrollbar(
                     modifier = Modifier
@@ -671,7 +676,7 @@ private fun FileContentView(
                 )
             }
         }
-        
+
         // 底部信息栏
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -693,13 +698,13 @@ private fun FileContentView(
 
 /**
  * XML格式化文本显示
- * 
+ *
  * 简单的XML语法高亮
  */
 @Composable
 private fun XmlFormattedText(xmlContent: String) {
     val lines = xmlContent.lines()
-    
+
     Column {
         lines.forEachIndexed { index, line ->
             Row(
@@ -715,7 +720,7 @@ private fun XmlFormattedText(xmlContent: String) {
                     color = Color(0xFF9CA3AF),
                     modifier = Modifier.width(40.dp)
                 )
-                
+
                 // XML内容 (简单高亮)
                 Text(
                     text = line,
