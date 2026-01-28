@@ -17,7 +17,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,9 +34,9 @@ import sophon.desktop.ui.components.TrailingTextListItem
 fun DeveloperScreen(viewModel: DeveloperViewModel = viewModel { DeveloperViewModel() }) {
     val uiState by viewModel.uiState.collectAsState()
 
-    var showWindowScaleDialog by remember { mutableStateOf(false) }
-    var showTransitionScaleDialog by remember { mutableStateOf(false) }
-    var showAnimatorScaleDialog by remember { mutableStateOf(false) }
+    val showWindowScaleDialog = remember { mutableStateOf(false) }
+    val showTransitionScaleDialog = remember { mutableStateOf(false) }
+    val showAnimatorScaleDialog = remember { mutableStateOf(false) }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
@@ -120,19 +119,19 @@ fun DeveloperScreen(viewModel: DeveloperViewModel = viewModel { DeveloperViewMod
                         title = "窗口动画缩放",
                         description = "窗口打开和关闭的动画速度调整",
                         actionText = "${uiState.windowAnimationScale}x",
-                        onClick = { showWindowScaleDialog = true }
+                        onClick = { showWindowScaleDialog.value = true }
                     ),
                     DeveloperOptionItem.TextItem(
                         title = "过渡动画缩放",
                         description = "应用程序切换时的动画速度调整",
-                        actionText = "${uiState.windowAnimationScale}x",
-                        onClick = { showTransitionScaleDialog = true }
+                        actionText = "${uiState.transitionAnimationScale}x",
+                        onClick = { showTransitionScaleDialog.value = true }
                     ),
                     DeveloperOptionItem.TextItem(
                         title = "Animator时长缩放",
                         description = "应用程序内的动画速度调整",
-                        actionText = "${uiState.windowAnimationScale}x",
-                        onClick = { showAnimatorScaleDialog = true }
+                        actionText = "${uiState.animatorDurationScale}x",
+                        onClick = { showAnimatorScaleDialog.value = true }
                     )
                 )
             )
@@ -153,30 +152,30 @@ fun DeveloperScreen(viewModel: DeveloperViewModel = viewModel { DeveloperViewMod
         }
     }
 
-    if (showWindowScaleDialog) {
+    if (showWindowScaleDialog.value) {
         AnimationScaleDialog(
             title = "窗口动画缩放",
             currentScale = uiState.windowAnimationScale,
             onScaleSelected = { scale -> viewModel.setWindowAnimationScale(scale) },
-            onDismiss = { }
+            onDismiss = { showWindowScaleDialog.value = false }
         )
     }
 
-    if (showTransitionScaleDialog) {
+    if (showTransitionScaleDialog.value) {
         AnimationScaleDialog(
             title = "过渡动画缩放",
             currentScale = uiState.transitionAnimationScale,
             onScaleSelected = { scale -> viewModel.setTransitionAnimationScale(scale) },
-            onDismiss = { }
+            onDismiss = { showTransitionScaleDialog.value = false }
         )
     }
 
-    if (showAnimatorScaleDialog) {
+    if (showAnimatorScaleDialog.value) {
         AnimationScaleDialog(
             title = "Animator时长缩放",
             currentScale = uiState.animatorDurationScale,
             onScaleSelected = { scale -> viewModel.setAnimatorDurationScale(scale) },
-            onDismiss = { }
+            onDismiss = { showAnimatorScaleDialog.value = false }
         )
     }
 }
