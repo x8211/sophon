@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import sophon.desktop.feature.systemmonitor.feature.camera.ui.CameraScreen
 import sophon.desktop.feature.systemmonitor.feature.cpu.ui.CpuScreen
 import sophon.desktop.feature.systemmonitor.feature.temperature.ui.TemperatureScreen
 import sophon.desktop.ui.theme.Dimens
@@ -83,6 +84,7 @@ fun SystemMonitorScreen(
             when (selectedFeature) {
                 SystemMonitorFeature.TEMPERATURE -> TemperatureScreen(refreshTrigger)
                 SystemMonitorFeature.CPU_MONITOR -> CpuScreen(refreshTrigger)
+                SystemMonitorFeature.CAMERA_MONITOR -> CameraScreen(refreshTrigger)
             }
         }
     }
@@ -161,5 +163,6 @@ private fun FeatureTabRow(
  */
 enum class SystemMonitorFeature(val displayName: String) {
     TEMPERATURE("温度监测"),
-    CPU_MONITOR("CPU监测")
+    CPU_MONITOR("CPU监测"),
+    CAMERA_MONITOR("相机监测")
 }
