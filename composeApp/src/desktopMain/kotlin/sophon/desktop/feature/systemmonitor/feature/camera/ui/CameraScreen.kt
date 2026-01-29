@@ -485,7 +485,7 @@ private fun StreamItem(stream: CameraStream) {
                     color = Color.Gray
                 )
                 Text(
-                    text = if (stream.formatName.isNotEmpty()) stream.formatName else stream.format,
+                    text = stream.formatName.ifEmpty { stream.format },
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Medium
                 )

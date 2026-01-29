@@ -13,7 +13,7 @@ class DeviceInfoRepositoryImpl : DeviceInfoRepository {
 
     override suspend fun  getDeviceInfo(): List<DeviceInfoSection> {
         val sections = mutableListOf<DeviceInfoSection>()
-        
+
         sections.add(getBasicInfo())
         sections.add(getSystemInfo())
         sections.add(getScreenInfo())
@@ -26,9 +26,9 @@ class DeviceInfoRepositoryImpl : DeviceInfoRepository {
         val items = mutableListOf<DeviceInfoItem>()
         // 获取所有属性
         val propOutput = "adb shell getprop".simpleShell()
-        
+
         val propMap = parseGetProp(propOutput)
-        
+
         // 映射基本信息
         propMap.forEach { (key, value) ->
             when {
@@ -41,7 +41,7 @@ class DeviceInfoRepositoryImpl : DeviceInfoRepository {
                 key.contains("ro.product.board") -> items.add(DeviceInfoItem("主板", value))
             }
         }
-        
+
         return DeviceInfoSection("基本信息", items)
     }
 
@@ -64,8 +64,11 @@ class DeviceInfoRepositoryImpl : DeviceInfoRepository {
                 key.contains("ro.build.host") -> items.add(DeviceInfoItem("构建主机", value))
             }
         }
-        
-        return DeviceInfoSection("系统版本", items)
+
+        return DeviceInfoSection(
+            "系统版本",
+            items.toSet().toList() // 去重
+        )
     }
 
     private suspend fun getScreenInfo(): DeviceInfoSection {
@@ -96,7 +99,7 @@ class DeviceInfoRepositoryImpl : DeviceInfoRepository {
 
     private suspend fun getCpuInfo(): DeviceInfoSection {
         val items = mutableListOf<DeviceInfoItem>()
-        
+
         // 架构信息
         val propOutput = "adb shell getprop".simpleShell()
         val propMap = parseGetProp(propOutput)
