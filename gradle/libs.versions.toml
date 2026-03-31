@@ -13,6 +13,8 @@ junitJupiterApi = "5.13.4"
 junitPlatformRunner = "1.13.4"
 serialization = "2.2.0"
 serialization-json = "1.9.0"
+sqlite-jdbc = "3.49.1.0"
+
 
 
 [libraries]
@@ -26,6 +28,7 @@ junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.re
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junitJupiterApi" }
 junit-platform-runner = { module = "org.junit.platform:junit-platform-runner", version.ref = "junitPlatformRunner" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose-multiplatform" }
+sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

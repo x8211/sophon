@@ -105,5 +105,6 @@ enum class AppMonitorFeature(val displayName: String) {
     THREAD("线程信息"),
     FILE_EXPLORER("文件浏览器"),
     ACTIVITY_STACK("Activity栈"),
-    GRAPHIC_MONITOR("图形监测")
+    GRAPHIC_MONITOR("图形监测"),
+    GRPC_CAPTURE("gRPC 抓取")
 }
