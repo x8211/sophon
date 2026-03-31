@@ -18,7 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.DeveloperMode
@@ -82,7 +81,6 @@ enum class AppScreen(val title: String) {
     Home("首页"),
     AppMonitor("应用监控"),
     SystemMonitor("系统监控"),
-    GrpcCapture("gRPC抓取"),
     Proxy("设置代理"),
     Developer("开发者选项"),
     Deeplink("Deeplink"),
@@ -328,7 +326,6 @@ private fun getIconForTitle(title: String): ImageVector {
         AppScreen.Proxy.title -> Icons.Default.Build
         AppScreen.AppMonitor.title -> Icons.Default.Dashboard
         AppScreen.SystemMonitor.title -> Icons.Default.Monitor
-        AppScreen.GrpcCapture.title -> Icons.Default.BugReport
         AppScreen.Settings.title -> Icons.Default.Settings
         AppScreen.Developer.title -> Icons.Default.DeveloperMode
         else -> Icons.Default.Extension

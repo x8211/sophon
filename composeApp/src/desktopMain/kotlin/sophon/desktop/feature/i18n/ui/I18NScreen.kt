@@ -75,8 +75,9 @@ fun I18NScreen(
 
     if (!project.isValid) {
         FileChooser(
+            content = "选择项目",
             fileSelectionMode = JFileChooser.DIRECTORIES_ONLY,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(Dimens.paddingMedium),
             onFileSelected = viewmodel::importProject
         )
         return
