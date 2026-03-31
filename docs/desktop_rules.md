@@ -2,21 +2,20 @@
 
 ## 1. 项目结构与模块划分 (Project Structure)
 
-遵循 **Feature-based**（按功能分包）且内部应用 **Clean Architecture** 的策略。
+遵循 **Feature-based**（按功能分包）的策略，同时严格参考 **Android 官方架构指南 (Modern App Architecture)** 与 **NowInAndroid (NiA)** 的架构演进，围绕不同关注点将应用划分为不同层级。
 
 ```text
 desktopMain/kotlin/sophon/desktop/
 ├── feature/                # 业务功能模块，按功能垂直切分
-│   ├── [feature_name]/     # 功能模块内部采用 Clean Architecture
-│   │   ├── domain/         # 领域层：业务逻辑与抽象
-│   │   │   ├── model/      # 领域模型 (Data Class)
-│   │   │   ├── repository/ # 仓库接口定义
-│   │   │   └── usecase/    # 具体的业务用例 (UseCases)
-│   │   ├── data/           # 数据层：实现细节
-│   │   │   └── repository/ # 仓库接口实现 (Impl)
-│   │   └── ui/             # 界面层：展示逻辑
-│   │       ├── [Feature]Screen.kt    # Compose 页面
-│   │       └── [Feature]ViewModel.kt # ViewModel
+│   ├── [feature_name]/     # 每个功能模块内部按官方架构分层
+│   │   ├── model/          # 业务模型 (App Model/Domain Model)
+│   │   ├── data/           # 数据层 (Data Layer: Repository, DataSource)
+│   │   │   ├── repository/ # 仓库实现 (对外暴露共享数据)
+│   │   │   └── source/     # 数据源 (如 API, DB, Shell 终端封装)
+│   │   ├── domain/         # 网域层 (Domain Layer: 仅存放 UseCases)
+│   │   └── ui/             # 界面层 (UI Layer)
+│   │       ├── [Feature]Screen.kt    # Compose 页面 (UI 元素)
+│   │       └── [Feature]ViewModel.kt # 状态容器 (State Holder)
 ├── ui/                     # 通用 UI 组件与系统
 │   ├── components/         # 全局通用的原子组件 (Buttons, Dialogs)
 │   └── theme/              # 主题配置 (Material 3)
@@ -29,12 +28,28 @@ desktopMain/kotlin/sophon/desktop/
 └── main.kt                 # 桌面端程序入口
 ```
 
-### 规则 (Rules)
-- **各层职责与依赖方向**: 项目采用 **Clean Architecture 依赖倒置原则（DIP）**，编译时依赖方向为：`UI → Domain ← Data`。
-    - **Domain 层**: 核心，必须是纯 Kotlin 代码，不依赖任何框架（如 `Context`, `compose`）。定义 `Repository` **接口**（抽象）和 `UseCase`，其他层均依赖于此层。
-    - **Data 层**: 负责数据获取的具体实现（Shell 命令、网络请求、本地存储）。`RepositoryImpl` **实现** Domain 层定义的接口，编译时依赖指向 Domain。
-    - **UI 层**: 仅负责渲染 UI 和处理用户交互。`ViewModel` 通过 `UseCase` 调用 `Repository` **接口**，不感知 Data 层的具体实现。
-    - 注意：Google 官方架构图示展示的是**数据流方向**（`UI → Domain → Data`），而非编译依赖方向，两者不矛盾。
+### 各层职责与规范 (Layers & Responsibilities)
+
+架构的数据与依赖流向为自上而下：`界面层 (UI) → 网域层 (Domain) → 数据层 (Data)`。
+
+1. **共享模型 (App Models)**
+    - **位置**：存放于模块根级的 `model/` 目录下（或针对跨模块复用的模型放入专门的 `core/model` 中）。
+    - **职责**：作为跨层流转的标准数据结构，业务模型是 UI、Domain、Data 三层共同识别的核心语言。
+
+2. **数据层 (Data Layer)**
+    - **职责**：提供应用数据并对外分发核心业务逻辑。该层负责管理单一可信来源（Single Source of Truth），并将底层数据的变更以只读流（如 `Flow`）的形式提供给上级。
+    - **组成**：
+        - **仓库 (Repository)**：负责对外暴露数据。它的接口和实现类均归属在 `data/repository/` 中（若无多态需也可直接提供具体类）。
+        - **数据源 (Data Source)**：位于 `data/source/` 中，仅负责与特定的底层（例如 API、数据库实例、Shell 系统调用）进行细化交互。
+
+3. **网域层 (Domain Layer)**
+    - **职责**：属于可选层。介于界面层和数据层之间，主要负责封装**最复杂的核心业务逻辑**，或者将多个 `ViewModels` 中**高复用的简单逻辑**抽取出来。
+    - **存储内容**：非常纯粹，仅包含各种各样的 `UseCase`（如 `GetConnectedDevicesUseCase`）。绝不能持有 UI 组件，它们通常以同步挂起函数或协程流的形式对外返回结果，依赖于 `data` 层的 Repository 获取底层支撑。
+
+4. **界面层 (UI Layer)**
+    - **职责**：仅包含展示逻辑。负责在收到上游（Data/Domain）数据后映射为状态在屏幕呈现，以及拦截用户操作向上游发起请求。
+    - **组成**：负责 UI 展示的 `@Composable` 及承担状态管理与请求转发职责的 `ViewModel`。
+
 - **组件**: 仅将高复用性、跨功能的组件放入 `ui/components`。
 - **全局状态**: 核心全局状态（如 ADB 路径、已连接设备、选中的当前设备）维护在 `sophon.desktop.core.Context` 单例中。页面特定的局部业务状态仍使用各自的 `ViewModel`。
 
@@ -104,12 +119,12 @@ class MyFeatureViewModel(
 ## 5. 命名与风格 (Naming & Style)
 
 - **文件命名**:
-    - `[Feature]Screen.kt`: UI 页面。
-    - `[Feature]ViewModel.kt`: UI 逻辑。
-    - `[Feature]Repository.kt`: 接口定义（放在 domain）。
-    - `[Feature]RepositoryImpl.kt`: 接口实现（放在 data）。
-    - `[Feature]UseCase.kt` 或 `DoSomethingUseCase.kt`: 业务用例。
-    - `[Feature]Model.kt`: 领域模型。
+    - `[Feature]Screen.kt`: UI 页面 (`ui/` 包下)。
+    - `[Feature]ViewModel.kt`: 状态容器 (`ui/` 包下)。
+    - `[Feature]Repository.kt`: 数据仓库的接口或具体层级实现 (`data/repository/` 包下)。
+    - `[Feature]DataSource.kt`: 对接底层的具体数据源封装 (`data/source/` 包下)。
+    - `[Action]UseCase.kt`: 声明具体单一行为的业务用例 (如 `GetDevicesUseCase.kt`，`domain/` 包下)。
+    - `[Feature]Model.kt`: 跨层的业务模型数据类 (`model/` 包下)。
 - **Composables**:名词短语（PascalCase），返回 `Unit`，接受 `Modifier` 作为第一个可选参数。
 - **Kotlin**: 单行函数优先使用表达式体 (Expression Body)。UI State 优先使用 Data Classes。
 
