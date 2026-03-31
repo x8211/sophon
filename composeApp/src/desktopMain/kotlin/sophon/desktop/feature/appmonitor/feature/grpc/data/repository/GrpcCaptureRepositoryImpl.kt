@@ -135,7 +135,6 @@ class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
      */
     override suspend fun refreshDatabase(packageName: String): Boolean {
         println("[GrpcCapture] >>> refreshDatabase() 开始，目标包名: $packageName")
-
         // 步骤 1：确保本地目录存在
         val parentDir = localDbFile.parentFile
         if (parentDir != null && !parentDir.exists()) {
@@ -152,38 +151,22 @@ class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
         }
 
         return try {
-            // 步骤 3：使用 run-as 通过 ProcessBuilder 直接读取数据库二进制并写入本地
-            // 等价命令：adb shell "run-as <pkg> cat databases/Protodroid.db" > localDbFile
-            // ⚠️ 此处未使用 Shell 工具类（simpleShell/oneshotShell/streamShell），
-            //    因为其返回值均为 String，无法处理二进制流 (SQLite .db 文件)。
-            //    需要直接读取进程 InputStream 写入本地文件。
-            val adbCmd = listOf(
-                "adb", "shell",
-                "run-as $packageName cat databases/$dbName"
-            )
-            println("[GrpcCapture] 执行命令: ${adbCmd.joinToString(" ")}")
+            // 步骤 3：使用 byteStreamShell 拉取数据库（以避免字符串转换导致二进制数据损坏）
+            val rawCmd = "adb shell run-as $packageName cat databases/$dbName"
+            println("[GrpcCapture] 执行命令: $rawCmd")
 
-            val process = ProcessBuilder(adbCmd)
-                .redirectErrorStream(false)
-                .start()
-
-            // 步骤 4：将 stdout 写入本地文件
+            // 步骤 4：将流写入本地文件
             println("[GrpcCapture] 开始从 adb stdout 写入本地文件...")
-            val bytesWritten = process.inputStream.use { inputStream ->
-                localDbFile.outputStream().use { outputStream ->
-                    inputStream.copyTo(outputStream)
+            var bytesWritten = 0L
+            localDbFile.outputStream().use { outputStream ->
+                with(sophon.desktop.core.Shell) {
+                    rawCmd.byteStreamShell().collect { chunk ->
+                        outputStream.write(chunk)
+                        bytesWritten += chunk.size
+                    }
                 }
             }
             println("[GrpcCapture] ✓ 写入完成，共写入 $bytesWritten bytes")
-
-            // 步骤 5：等待进程结束并检查退出码
-            val exitCode = process.waitFor()
-            println("[GrpcCapture] adb 进程退出码: $exitCode")
-
-            if (exitCode != 0) {
-                val errOutput = process.errorStream.bufferedReader().readText()
-                println("[GrpcCapture] ✗ adb 命令错误输出: $errOutput")
-            }
 
             // 步骤 6：校验本地文件
             val fileExists = localDbFile.exists()
@@ -206,5 +189,6 @@ class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
             e.printStackTrace()
             false
         }
+
     }
 }

@@ -118,10 +118,8 @@ fun GrpcCaptureScreen(
                 is GrpcCaptureUiState.Idle -> {
                     CenterMessage(
                         icon = Icons.Default.BugReport,
-                        message = if (!packageName.isNullOrBlank())
-                            "点击右上角刷新按钮拉取 $packageName 的数据库"
-                        else
-                            "等待获取前台应用包名..."
+                        message = if (!packageName.isNullOrBlank()) ""
+                        else "等待获取前台应用包名..."
                     )
                 }
 

@@ -118,3 +118,5 @@
 #     public void println(java.lang.Object);
 # }
 
+-keep class org.sqlite.** { *; }
+
