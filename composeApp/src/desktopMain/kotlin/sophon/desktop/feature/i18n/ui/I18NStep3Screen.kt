@@ -15,7 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import sophon.desktop.feature.i18n.domain.model.I18nProject
+import sophon.desktop.feature.i18n.model.I18nProject
 
 @Composable
 fun I18NStep3Screen(

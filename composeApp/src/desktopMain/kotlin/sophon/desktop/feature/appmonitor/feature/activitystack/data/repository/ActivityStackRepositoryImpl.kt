@@ -1,8 +1,7 @@
 package sophon.desktop.feature.appmonitor.feature.activitystack.data.repository
 
 import sophon.desktop.core.Shell.oneshotShell
-import sophon.desktop.feature.appmonitor.feature.activitystack.domain.model.LifecycleComponent
-import sophon.desktop.feature.appmonitor.feature.activitystack.domain.repository.ActivityStackRepository
+import sophon.desktop.feature.appmonitor.feature.activitystack.model.LifecycleComponent
 
 /**
  * ActivityStackRepository 实现

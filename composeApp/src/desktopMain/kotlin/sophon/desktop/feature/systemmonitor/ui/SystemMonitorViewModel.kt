@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import sophon.desktop.feature.systemmonitor.data.repository.SystemMonitorRepositoryImpl
-import sophon.desktop.feature.systemmonitor.domain.usecase.GetSystemInfoUseCase
 
 /**
  * 系统监控ViewModel
@@ -20,7 +19,6 @@ import sophon.desktop.feature.systemmonitor.domain.usecase.GetSystemInfoUseCase
 class SystemMonitorViewModel : ViewModel() {
 
     private val repository = SystemMonitorRepositoryImpl()
-    private val getSystemInfoUseCase = GetSystemInfoUseCase(repository)
 
     // 当前选中的子功能
     private val _selectedFeature = MutableStateFlow(SystemMonitorFeature.TEMPERATURE)
@@ -50,7 +48,7 @@ class SystemMonitorViewModel : ViewModel() {
             while (isActive) {
                 try {
                     _errorMessage.value = null
-                    _refreshTrigger.value = getSystemInfoUseCase()
+                    _refreshTrigger.value = repository.getTimestamp()
                 } catch (e: Exception) {
                     _errorMessage.value = "加载失败: ${e.message}"
                 }

@@ -9,11 +9,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import sophon.desktop.core.Context
 import sophon.desktop.feature.proxy.data.repository.ProxyRepositoryImpl
-import sophon.desktop.feature.proxy.domain.model.ProxyInfo
-import sophon.desktop.feature.proxy.domain.usecase.ProxyUseCase
+import sophon.desktop.feature.proxy.domain.usecase.GetProxyInfoUseCase
+import sophon.desktop.feature.proxy.model.ProxyInfo
 
 class ProxyViewModel(
-    private val useCase: ProxyUseCase = ProxyUseCase(ProxyRepositoryImpl())
+    private val repository: ProxyRepositoryImpl = ProxyRepositoryImpl(),
+    private val getProxyInfoUseCase: GetProxyInfoUseCase = GetProxyInfoUseCase(repository)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProxyInfo())
@@ -22,24 +23,24 @@ class ProxyViewModel(
     init {
         viewModelScope.launch {
             Context.stream.collect {
-                _uiState.value = useCase.getProxyInfo()
+                _uiState.value = getProxyInfoUseCase()
             }
         }
     }
 
     fun setProxy(proxy: String) {
         viewModelScope.launch {
-            useCase.setProxy(proxy)
+            repository.modifyProxy(proxy)
             delay(100)
-            _uiState.update { it.copy(current = useCase.getCurrentProxy(), proxyEnabled = true) }
+            _uiState.update { it.copy(current = repository.getProxy(), proxyEnabled = true) }
         }
     }
 
     fun resetProxy() {
         viewModelScope.launch {
-            useCase.resetProxy()
+            repository.resetProxy()
             delay(100)
-            _uiState.update { it.copy(current = useCase.getCurrentProxy(), proxyEnabled = false) }
+            _uiState.update { it.copy(current = repository.getProxy(), proxyEnabled = false) }
         }
     }
 }

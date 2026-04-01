@@ -2,11 +2,10 @@ package sophon.desktop.feature.appmonitor.feature.gfx.data.repository
 
 import sophon.desktop.core.Shell.oneshotShell
 import sophon.desktop.core.Shell.simpleShell
-import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.DisplayData
-import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.GfxMetrics
-import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.JankReason
-import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.ViewRootInfo
-import sophon.desktop.feature.appmonitor.feature.gfx.domain.repository.GfxRepository
+import sophon.desktop.feature.appmonitor.feature.gfx.model.DisplayData
+import sophon.desktop.feature.appmonitor.feature.gfx.model.GfxMetrics
+import sophon.desktop.feature.appmonitor.feature.gfx.model.JankReason
+import sophon.desktop.feature.appmonitor.feature.gfx.model.ViewRootInfo
 
 class GfxRepositoryImpl : GfxRepository {
     override suspend fun getDisplayData(packageName: String): DisplayData {

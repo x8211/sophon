@@ -1,8 +1,10 @@
 package sophon.desktop.feature.appmonitor.feature.grpc.data.repository
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import sophon.desktop.core.PB_HOME
-import sophon.desktop.feature.appmonitor.feature.grpc.domain.model.GrpcCaptureModel
-import sophon.desktop.feature.appmonitor.feature.grpc.domain.repository.GrpcCaptureRepository
+import sophon.desktop.core.Shell.byteStreamShell
+import sophon.desktop.feature.appmonitor.feature.grpc.model.GrpcCaptureModel
 import java.io.File
 import java.sql.DriverManager
 
@@ -50,71 +52,75 @@ class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
         println("[GrpcCapture] ✓ 本地数据库文件存在，大小: ${localDbFile.length()} bytes")
 
         val records = mutableListOf<GrpcCaptureModel>()
-        return try {
-            Class.forName("org.sqlite.JDBC")
-            println("[GrpcCapture] ✓ SQLite JDBC 驱动加载成功")
+        return withContext(Dispatchers.IO) {
+            try {
+                Class.forName("org.sqlite.JDBC")
+                println("[GrpcCapture] ✓ SQLite JDBC 驱动加载成功")
 
-            DriverManager.getConnection("jdbc:sqlite:${localDbFile.absolutePath}").use { connection ->
-                println("[GrpcCapture] ✓ 数据库连接建立成功")
+                DriverManager.getConnection("jdbc:sqlite:${localDbFile.absolutePath}")
+                    .use { connection ->
+                        println("[GrpcCapture] ✓ 数据库连接建立成功")
 
-                val stmt = connection.createStatement()
+                        val stmt = connection.createStatement()
 
-                // ── 打印所有表名（调试用） ──────────────────────────────────
-                val allTables = mutableListOf<String>()
-                val tableRs = stmt.executeQuery(
-                    "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-                )
-                while (tableRs.next()) {
-                    allTables.add(tableRs.getString("name"))
-                }
-                println("[GrpcCapture] ✓ 数据库所有表名(${allTables.size}): ${allTables.joinToString()}")
-
-                // ── 打印目标表列信息（调试用） ────────────────────────────────
-                val pragmaRs = connection.createStatement()
-                    .executeQuery("PRAGMA table_info(ProtodroidDataEntity)")
-                val columns = mutableListOf<String>()
-                while (pragmaRs.next()) {
-                    val colName = pragmaRs.getString("name")
-                    val colType = pragmaRs.getString("type")
-                    columns.add(colName)
-                    println("[GrpcCapture]   列: $colName ($colType)")
-                }
-                println("[GrpcCapture] ✓ 表 ProtodroidDataEntity 共 ${columns.size} 列: ${columns.joinToString()}")
-
-                // ── 执行查询 ──────────────────────────────────────────────────
-                val sql = "SELECT * FROM ProtodroidDataEntity ORDER BY create_timestamp DESC LIMIT 100"
-                println("[GrpcCapture] 执行查询: $sql")
-
-                val resultSet = connection.createStatement().executeQuery(sql)
-                var count = 0
-                while (resultSet.next()) {
-                    records.add(
-                        GrpcCaptureModel(
-                            id = runCatching { resultSet.getLong("id") }.getOrDefault(0L),
-                            serviceUrl = runCatching { resultSet.getString("service_url") }.getOrDefault(""),
-                            serviceName = runCatching { resultSet.getString("service_name") }.getOrDefault(""),
-                            requestHeader = runCatching { resultSet.getString("request_header") }.getOrDefault(""),
-                            responseHeader = runCatching { resultSet.getString("response_header") }.getOrDefault(""),
-                            requestBody = runCatching { resultSet.getString("request_body") }.getOrDefault(""),
-                            responseBody = runCatching { resultSet.getString("response_body") }.getOrDefault(""),
-                            statusCode = runCatching { resultSet.getInt("status_code") }.getOrDefault(-1),
-                            statusLevel = runCatching { resultSet.getInt("status_level") }.getOrDefault(0),
-                            statusName = runCatching { resultSet.getString("status_name") }.getOrDefault(""),
-                            statusDesc = runCatching { resultSet.getString("status_desc") }.getOrDefault(""),
-                            statusErrorCause = runCatching { resultSet.getString("status_error_cause") }.getOrDefault(""),
-                            createTimestamp = runCatching { resultSet.getLong("create_timestamp") }.getOrDefault(0L),
-                            updateTimestamp = runCatching { resultSet.getLong("update_timestamp") }.getOrDefault(0L)
+                        // ── 打印所有表名（调试用） ──────────────────────────────────
+                        val allTables = mutableListOf<String>()
+                        val tableRs = stmt.executeQuery(
+                            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
                         )
-                    )
-                    count++
-                }
-                println("[GrpcCapture] ✓ 查询完成，共读取 $count 条记录")
+                        while (tableRs.next()) {
+                            allTables.add(tableRs.getString("name"))
+                        }
+                        println("[GrpcCapture] ✓ 数据库所有表名(${allTables.size}): ${allTables.joinToString()}")
+
+                        // ── 打印目标表列信息（调试用） ────────────────────────────────
+                        val pragmaRs = connection.createStatement()
+                            .executeQuery("PRAGMA table_info(ProtodroidDataEntity)")
+                        val columns = mutableListOf<String>()
+                        while (pragmaRs.next()) {
+                            val colName = pragmaRs.getString("name")
+                            val colType = pragmaRs.getString("type")
+                            columns.add(colName)
+                            println("[GrpcCapture]   列: $colName ($colType)")
+                        }
+                        println("[GrpcCapture] ✓ 表 ProtodroidDataEntity 共 ${columns.size} 列: ${columns.joinToString()}")
+
+                        // ── 执行查询 ──────────────────────────────────────────────────
+                        val sql =
+                            "SELECT * FROM ProtodroidDataEntity ORDER BY create_timestamp DESC LIMIT 100"
+                        println("[GrpcCapture] 执行查询: $sql")
+
+                        val resultSet = connection.createStatement().executeQuery(sql)
+                        var count = 0
+                        while (resultSet.next()) {
+                            records.add(
+                                GrpcCaptureModel(
+                                    id = runCatching { resultSet.getLong("id") }.getOrDefault(0L),
+                                    serviceUrl = runCatching { resultSet.getString("service_url") }.getOrDefault(""),
+                                    serviceName = runCatching { resultSet.getString("service_name") }.getOrDefault(""),
+                                    requestHeader = runCatching { resultSet.getString("request_header") }.getOrDefault(""),
+                                    responseHeader = runCatching { resultSet.getString("response_header") }.getOrDefault(""),
+                                    requestBody = runCatching { resultSet.getString("request_body") }.getOrDefault(""),
+                                    responseBody = runCatching { resultSet.getString("response_body") }.getOrDefault(""),
+                                    statusCode = runCatching { resultSet.getInt("status_code") }.getOrDefault(-1),
+                                    statusLevel = runCatching { resultSet.getInt("status_level") }.getOrDefault(0),
+                                    statusName = runCatching { resultSet.getString("status_name") }.getOrDefault(""),
+                                    statusDesc = runCatching { resultSet.getString("status_desc") }.getOrDefault(""),
+                                    statusErrorCause = runCatching { resultSet.getString("status_error_cause") }.getOrDefault(""),
+                                    createTimestamp = runCatching { resultSet.getLong("create_timestamp") }.getOrDefault(0L),
+                                    updateTimestamp = runCatching { resultSet.getLong("update_timestamp") }.getOrDefault(0L)
+                                )
+                            )
+                            count++
+                        }
+                        println("[GrpcCapture] ✓ 查询完成，共读取 $count 条记录")
+                    }
+                records
+            } catch (e: Exception) {
+                println("[GrpcCapture] ✗ 读取数据库异常: ${e.message}")
+                e.printStackTrace()
+                emptyList()
             }
-            records
-        } catch (e: Exception) {
-            println("[GrpcCapture] ✗ 读取数据库异常: ${e.message}")
-            e.printStackTrace()
-            emptyList()
         }
     }
 
@@ -159,8 +165,8 @@ class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
             println("[GrpcCapture] 开始从 adb stdout 写入本地文件...")
             var bytesWritten = 0L
             localDbFile.outputStream().use { outputStream ->
-                with(sophon.desktop.core.Shell) {
-                    rawCmd.byteStreamShell().collect { chunk ->
+                rawCmd.byteStreamShell().collect { chunk ->
+                    withContext(Dispatchers.IO) {
                         outputStream.write(chunk)
                         bytesWritten += chunk.size
                     }

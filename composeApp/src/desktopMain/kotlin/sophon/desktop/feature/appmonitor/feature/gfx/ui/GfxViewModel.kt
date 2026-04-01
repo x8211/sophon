@@ -9,8 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import sophon.desktop.feature.appmonitor.feature.gfx.data.repository.GfxRepositoryImpl
-import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.DisplayData
-import sophon.desktop.feature.appmonitor.feature.gfx.domain.usecase.GetGfxDataUseCase
+import sophon.desktop.feature.appmonitor.feature.gfx.model.DisplayData
 
 /**
  * 图形监测 ViewModel
@@ -18,7 +17,6 @@ import sophon.desktop.feature.appmonitor.feature.gfx.domain.usecase.GetGfxDataUs
  */
 class GfxViewModel : ViewModel() {
     private val repository = GfxRepositoryImpl()
-    private val getGfxDataUseCase = GetGfxDataUseCase(repository)
     private val viewModelScope = CoroutineScope(Dispatchers.Main + Job())
 
     // 当前显示的图形数据
@@ -38,7 +36,7 @@ class GfxViewModel : ViewModel() {
         viewModelScope.launch {
             isRefreshing = true
             try {
-                val data = getGfxDataUseCase(packageName)
+                val data = repository.getDisplayData(packageName)
                 displayData = data
             } catch (e: Exception) {
                 e.printStackTrace()

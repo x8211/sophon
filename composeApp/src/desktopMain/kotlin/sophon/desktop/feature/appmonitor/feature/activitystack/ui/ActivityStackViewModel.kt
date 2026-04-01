@@ -6,8 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import sophon.desktop.feature.appmonitor.feature.activitystack.data.repository.ActivityStackRepositoryImpl
-import sophon.desktop.feature.appmonitor.feature.activitystack.domain.model.LifecycleComponent
-import sophon.desktop.feature.appmonitor.feature.activitystack.domain.usecase.GetActivityStackUseCase
+import sophon.desktop.feature.appmonitor.feature.activitystack.model.LifecycleComponent
 
 /**
  * Activity栈ViewModel
@@ -15,9 +14,7 @@ import sophon.desktop.feature.appmonitor.feature.activitystack.domain.usecase.Ge
  * 根据传入的包名加载Activity栈信息
  */
 class ActivityStackViewModel(
-    private val getActivityStackUseCase: GetActivityStackUseCase = GetActivityStackUseCase(
-        ActivityStackRepositoryImpl()
-    )
+    private val repository: ActivityStackRepositoryImpl = ActivityStackRepositoryImpl()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<List<LifecycleComponent>>(emptyList())
@@ -31,7 +28,7 @@ class ActivityStackViewModel(
     fun loadActivityStack(packageName: String) {
         viewModelScope.launch {
             try {
-                _uiState.value = getActivityStackUseCase(packageName)
+                _uiState.value = repository.getActivityStack(packageName)
             } catch (_: Exception) {
                 _uiState.value = emptyList()
             }

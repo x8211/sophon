@@ -9,9 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import sophon.desktop.feature.appmonitor.feature.grpc.data.repository.GrpcCaptureRepositoryImpl
-import sophon.desktop.feature.appmonitor.feature.grpc.domain.model.GrpcCaptureModel
-import sophon.desktop.feature.appmonitor.feature.grpc.domain.usecase.GetGrpcCaptureUseCase
-import sophon.desktop.feature.appmonitor.feature.grpc.domain.usecase.RefreshGrpcCaptureUseCase
+import sophon.desktop.feature.appmonitor.feature.grpc.model.GrpcCaptureModel
 
 /**
  * gRPC 捕获功能的 ViewModel
@@ -23,8 +21,6 @@ import sophon.desktop.feature.appmonitor.feature.grpc.domain.usecase.RefreshGrpc
 class GrpcCaptureViewModel : ViewModel() {
 
     private val repository = GrpcCaptureRepositoryImpl()
-    private val getGrpcCaptureUseCase = GetGrpcCaptureUseCase(repository)
-    private val refreshGrpcCaptureUseCase = RefreshGrpcCaptureUseCase(repository)
 
     private val _uiState = MutableStateFlow<GrpcCaptureUiState>(GrpcCaptureUiState.Idle)
     val uiState = _uiState.asStateFlow()
@@ -64,9 +60,9 @@ class GrpcCaptureViewModel : ViewModel() {
 
             while (isActive) {
                 try {
-                    val success = refreshGrpcCaptureUseCase(packageName)
+                    val success = repository.refreshDatabase(packageName)
                     if (success) {
-                        val records = getGrpcCaptureUseCase()
+                        val records = repository.getCapturedRecords()
                         println("[GrpcCaptureVM] 轮询刷新成功，读取到 ${records.size} 条记录")
                         _uiState.value = GrpcCaptureUiState.Success(records)
                     } else {

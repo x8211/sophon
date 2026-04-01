@@ -6,11 +6,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import sophon.desktop.feature.appmonitor.feature.fileexplorer.data.repository.FileExplorerRepositoryImpl
-import sophon.desktop.feature.appmonitor.feature.fileexplorer.domain.model.AppDirectoryInfo
-import sophon.desktop.feature.appmonitor.feature.fileexplorer.domain.model.FileItem
-import sophon.desktop.feature.appmonitor.feature.fileexplorer.domain.usecase.GetAppDirectoriesUseCase
 import sophon.desktop.feature.appmonitor.feature.fileexplorer.domain.usecase.GetFileListUseCase
-import sophon.desktop.feature.appmonitor.feature.fileexplorer.domain.usecase.ReadFileContentUseCase
+import sophon.desktop.feature.appmonitor.feature.fileexplorer.model.AppDirectoryInfo
+import sophon.desktop.feature.appmonitor.feature.fileexplorer.model.FileItem
 
 /**
  * UI状态密封类
@@ -50,8 +48,6 @@ class FileExplorerViewModel : ViewModel() {
     
     private val repository = FileExplorerRepositoryImpl()
     private val getFileListUseCase = GetFileListUseCase(repository)
-    private val getAppDirectoriesUseCase = GetAppDirectoriesUseCase(repository)
-    private val readFileContentUseCase = ReadFileContentUseCase(repository)
     
     private val _uiState = MutableStateFlow<FileExplorerUiState>(FileExplorerUiState.Loading)
     val uiState = _uiState.asStateFlow()
@@ -82,7 +78,7 @@ class FileExplorerViewModel : ViewModel() {
                     return@launch
                 }
                 
-                val appInfo = getAppDirectoriesUseCase(packageName)
+                val appInfo = repository.getAppDirectories(packageName)
                 if (appInfo != null) {
                     _uiState.value = FileExplorerUiState.ShowDirectories(appInfo)
                 } else {
@@ -136,7 +132,7 @@ class FileExplorerViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.value = FileExplorerUiState.Loading
             try {
-                val content = readFileContentUseCase(file.path)
+                val content = repository.readFileContent(file.path)
                 val isXml = extension == "xml"
                 _uiState.value = FileExplorerUiState.ShowFileContent(
                     fileName = file.name,

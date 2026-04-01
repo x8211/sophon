@@ -6,8 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import sophon.desktop.feature.systemmonitor.feature.temperature.data.repository.TemperatureRepositoryImpl
-import sophon.desktop.feature.systemmonitor.feature.temperature.domain.model.SystemMonitorData
-import sophon.desktop.feature.systemmonitor.feature.temperature.domain.usecase.TemperatureDataUseCase
+import sophon.desktop.feature.systemmonitor.feature.temperature.model.SystemMonitorData
 
 /**
  * 温度监测 ViewModel
@@ -16,8 +15,7 @@ import sophon.desktop.feature.systemmonitor.feature.temperature.domain.usecase.T
  * 不再自动轮询，由父组件通过 refreshTrigger 触发刷新
  */
 class TemperatureViewModel(
-    private val getTemperatureDataUseCase: TemperatureDataUseCase =
-        TemperatureDataUseCase(TemperatureRepositoryImpl())
+    private val repository: TemperatureRepositoryImpl = TemperatureRepositoryImpl()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SystemMonitorData>(SystemMonitorData())
@@ -28,8 +26,7 @@ class TemperatureViewModel(
      */
     fun refresh() {
         viewModelScope.launch {
-            val data = getTemperatureDataUseCase()
-            _uiState.value = data
+            _uiState.value = SystemMonitorData(temperatureData = repository.getTemperatureData())
         }
     }
 }

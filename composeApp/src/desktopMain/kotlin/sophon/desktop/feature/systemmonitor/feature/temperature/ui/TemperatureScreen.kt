@@ -47,7 +47,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import sophon.desktop.feature.systemmonitor.feature.temperature.domain.model.MonitorDataPoint
+import sophon.desktop.feature.systemmonitor.feature.temperature.model.MonitorDataPoint
 import sophon.desktop.ui.theme.Dimens
 import kotlin.math.max
 

@@ -6,10 +6,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import sophon.desktop.core.Shell.simpleShell
-import sophon.desktop.feature.i18n.domain.model.I18nConfig
-import sophon.desktop.feature.i18n.domain.model.I18nModule
-import sophon.desktop.feature.i18n.domain.model.I18nProject
-import sophon.desktop.feature.i18n.domain.repository.I18nRepository
+import sophon.desktop.feature.i18n.model.I18nConfig
+import sophon.desktop.feature.i18n.model.I18nModule
+import sophon.desktop.feature.i18n.model.I18nProject
 import java.io.File
 
 class I18nRepositoryImpl : I18nRepository {

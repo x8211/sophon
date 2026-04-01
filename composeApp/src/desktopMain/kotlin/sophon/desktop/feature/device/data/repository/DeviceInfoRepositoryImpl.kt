@@ -1,9 +1,8 @@
 package sophon.desktop.feature.device.data.repository
 
 import sophon.desktop.core.Shell.simpleShell
-import sophon.desktop.feature.device.domain.model.DeviceInfoItem
-import sophon.desktop.feature.device.domain.model.DeviceInfoSection
-import sophon.desktop.feature.device.domain.repository.DeviceInfoRepository
+import sophon.desktop.feature.device.model.DeviceInfoItem
+import sophon.desktop.feature.device.model.DeviceInfoSection
 
 /**
  * 设备信息仓库的实现类

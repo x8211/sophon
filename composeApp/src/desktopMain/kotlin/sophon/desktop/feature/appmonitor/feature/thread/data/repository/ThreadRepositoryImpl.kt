@@ -2,9 +2,8 @@ package sophon.desktop.feature.appmonitor.feature.thread.data.repository
 
 import sophon.desktop.core.Shell.oneshotShell
 import sophon.desktop.core.Shell.simpleShell
-import sophon.desktop.feature.appmonitor.feature.thread.domain.model.ProcessInfo
-import sophon.desktop.feature.appmonitor.feature.thread.domain.model.ThreadInfo
-import sophon.desktop.feature.appmonitor.feature.thread.domain.repository.ThreadRepository
+import sophon.desktop.feature.appmonitor.feature.thread.model.ProcessInfo
+import sophon.desktop.feature.appmonitor.feature.thread.model.ThreadInfo
 
 /**
  * 线程信息仓库实现

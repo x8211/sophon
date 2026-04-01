@@ -1,9 +1,8 @@
 package sophon.desktop.feature.appmonitor.feature.fileexplorer.data.repository
 
 import sophon.desktop.core.Shell.oneshotShell
-import sophon.desktop.feature.appmonitor.feature.fileexplorer.domain.model.AppDirectoryInfo
-import sophon.desktop.feature.appmonitor.feature.fileexplorer.domain.model.FileItem
-import sophon.desktop.feature.appmonitor.feature.fileexplorer.domain.repository.FileExplorerRepository
+import sophon.desktop.feature.appmonitor.feature.fileexplorer.model.AppDirectoryInfo
+import sophon.desktop.feature.appmonitor.feature.fileexplorer.model.FileItem
 
 /**
  * 文件浏览器仓库实现

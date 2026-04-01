@@ -14,16 +14,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import sophon.desktop.feature.deeplink.data.repository.DeepLinkRepositoryImpl
-import sophon.desktop.feature.deeplink.domain.usecase.DeepLinkUseCase
 
 class DeepLinkViewModel(
-    private val deepLinkUseCase: DeepLinkUseCase = DeepLinkUseCase(DeepLinkRepositoryImpl())
+    private val repository: DeepLinkRepositoryImpl = DeepLinkRepositoryImpl()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<String>("")
     val uiState = _uiState.asStateFlow()
 
-    val history: StateFlow<List<String>> = deepLinkUseCase.getHistory()
+    val history: StateFlow<List<String>> = repository.getHistory()
         // SharingStarted.WhileSubscribed(5000) allows the flow to be kept alive briefly during config changes
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -37,7 +36,7 @@ class DeepLinkViewModel(
 
         viewModelScope.launch {
             val result = StringBuilder()
-            deepLinkUseCase.execute(uri)
+            repository.executeDeepLink(uri)
                 .onStart { _uiState.update { "正在打开: $uri" } }
                 .onEach { str -> result.appendLine(str) }
                 .onCompletion { _ -> _uiState.update { result.toString() } }
@@ -47,13 +46,13 @@ class DeepLinkViewModel(
 
     private fun saveToHistory(uri: String) {
         viewModelScope.launch {
-            deepLinkUseCase.saveHistory(uri)
+            repository.saveHistory(uri)
         }
     }
 
     fun deleteHistory(uri: String) {
         viewModelScope.launch {
-            deepLinkUseCase.deleteHistory(uri)
+            repository.deleteHistory(uri)
         }
     }
 

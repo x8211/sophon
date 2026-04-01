@@ -2,8 +2,7 @@ package sophon.desktop.feature.developer.data.repository
 
 import sophon.desktop.core.Shell.oneshotShell
 import sophon.desktop.core.Shell.simpleShell
-import sophon.desktop.feature.developer.domain.model.DeveloperOptions
-import sophon.desktop.feature.developer.domain.repository.DeveloperRepository
+import sophon.desktop.feature.developer.model.DeveloperOptions
 
 class DeveloperRepositoryImpl : DeveloperRepository {
 

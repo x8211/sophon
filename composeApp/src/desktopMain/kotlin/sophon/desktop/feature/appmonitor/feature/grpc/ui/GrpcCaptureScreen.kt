@@ -51,7 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import sophon.desktop.feature.appmonitor.feature.grpc.domain.model.GrpcCaptureModel
+import sophon.desktop.feature.appmonitor.feature.grpc.model.GrpcCaptureModel
 import sophon.desktop.ui.theme.Dimens
 import java.text.SimpleDateFormat
 import java.util.Date

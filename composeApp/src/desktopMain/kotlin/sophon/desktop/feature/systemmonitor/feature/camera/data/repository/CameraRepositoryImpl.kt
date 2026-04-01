@@ -1,15 +1,14 @@
 package sophon.desktop.feature.systemmonitor.feature.camera.data.repository
 
 import sophon.desktop.core.Shell.oneshotShell
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.CameraClientDetail
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.CameraData
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.CameraDeviceInfo
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.CameraEventLog
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.CameraEventType
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.CameraStream
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.CameraStreamConfig
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.PixelFormatHelper
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.repository.CameraRepository
+import sophon.desktop.feature.systemmonitor.feature.camera.model.CameraClientDetail
+import sophon.desktop.feature.systemmonitor.feature.camera.model.CameraData
+import sophon.desktop.feature.systemmonitor.feature.camera.model.CameraDeviceInfo
+import sophon.desktop.feature.systemmonitor.feature.camera.model.CameraEventLog
+import sophon.desktop.feature.systemmonitor.feature.camera.model.CameraEventType
+import sophon.desktop.feature.systemmonitor.feature.camera.model.CameraStream
+import sophon.desktop.feature.systemmonitor.feature.camera.model.CameraStreamConfig
+import sophon.desktop.feature.systemmonitor.feature.camera.model.PixelFormatHelper
 
 /**
  * 相机监控数据仓库实现

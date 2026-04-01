@@ -57,8 +57,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import sophon.desktop.feature.appmonitor.feature.fileexplorer.domain.model.AppDirectoryInfo
-import sophon.desktop.feature.appmonitor.feature.fileexplorer.domain.model.FileItem
+import sophon.desktop.feature.appmonitor.feature.fileexplorer.model.AppDirectoryInfo
+import sophon.desktop.feature.appmonitor.feature.fileexplorer.model.FileItem
 import sophon.desktop.feature.device.ui.simpleVerticalScrollbar
 import sophon.desktop.ui.theme.Dimens
 import java.awt.Cursor

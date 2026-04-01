@@ -1,7 +1,7 @@
 package sophon.desktop.feature.appmonitor.feature.activitystack.data.repository
 
-import sophon.desktop.feature.appmonitor.feature.activitystack.domain.model.ActivityInfo
-import sophon.desktop.feature.appmonitor.feature.activitystack.domain.model.FragmentInfo
+import sophon.desktop.feature.appmonitor.feature.activitystack.model.ActivityInfo
+import sophon.desktop.feature.appmonitor.feature.activitystack.model.FragmentInfo
 
 /**
  * 解析 dumpsys activity 输出的工具类

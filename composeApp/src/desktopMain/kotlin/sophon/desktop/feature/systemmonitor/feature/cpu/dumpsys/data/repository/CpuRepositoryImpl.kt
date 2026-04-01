@@ -1,13 +1,12 @@
 package sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.data.repository
 
 import sophon.desktop.core.Shell.oneshotShell
-import sophon.desktop.feature.systemmonitor.feature.cpu.common.domain.model.ThreadCpuInfo
-import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.domain.model.CpuData
-import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.domain.model.CpuLoadInfo
-import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.domain.model.CpuTimeRange
-import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.domain.model.ProcessCpuInfo
-import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.domain.model.SystemCpuInfo
-import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.domain.repository.CpuRepository
+import sophon.desktop.feature.systemmonitor.feature.cpu.common.model.ThreadCpuInfo
+import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.model.CpuData
+import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.model.CpuLoadInfo
+import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.model.CpuTimeRange
+import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.model.ProcessCpuInfo
+import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.model.SystemCpuInfo
 
 /**
  * CPU监测数据仓库实现

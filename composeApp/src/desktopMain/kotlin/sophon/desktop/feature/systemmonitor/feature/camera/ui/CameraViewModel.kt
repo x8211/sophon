@@ -6,8 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import sophon.desktop.feature.systemmonitor.feature.camera.data.repository.CameraRepositoryImpl
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.CameraData
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.usecase.GetCameraDataUseCase
+import sophon.desktop.feature.systemmonitor.feature.camera.model.CameraData
 
 /**
  * 相机监控 ViewModel
@@ -16,7 +15,7 @@ import sophon.desktop.feature.systemmonitor.feature.camera.domain.usecase.GetCam
  */
 class CameraViewModel : ViewModel() {
 
-    private val getCameraDataUseCase = GetCameraDataUseCase(CameraRepositoryImpl())
+    private val repository = CameraRepositoryImpl()
 
     private val _uiState = MutableStateFlow<CameraUiState>(CameraUiState.Loading)
     val uiState = _uiState.asStateFlow()
@@ -30,7 +29,7 @@ class CameraViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 // 为避免界面闪烁，不重置为 Loading 状态
-                val data = getCameraDataUseCase()
+                val data = repository.getCameraData()
                 _uiState.value = CameraUiState.Success(data)
             } catch (e: Exception) {
                 _uiState.value = CameraUiState.Error(e.message ?: "未知错误")

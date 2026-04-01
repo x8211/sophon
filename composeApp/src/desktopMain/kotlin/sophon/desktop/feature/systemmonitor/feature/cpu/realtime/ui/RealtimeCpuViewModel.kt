@@ -8,10 +8,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import sophon.desktop.feature.systemmonitor.feature.cpu.common.domain.model.ThreadCpuInfo
+import sophon.desktop.feature.systemmonitor.feature.cpu.common.model.ThreadCpuInfo
 import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.data.repository.RealtimeCpuRepositoryImpl
-import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.domain.model.RealtimeCpuData
-import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.domain.usecase.GetRealtimeCpuDataUseCase
+import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.model.RealtimeCpuData
 
 /**
  * 实时CPU监测ViewModel
@@ -19,7 +18,6 @@ import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.domain.usecase.
 class RealtimeCpuViewModel : ViewModel() {
 
     private val repository = RealtimeCpuRepositoryImpl()
-    private val getRealtimeCpuDataUseCase = GetRealtimeCpuDataUseCase(repository)
 
     private val _uiState = MutableStateFlow<RealtimeCpuUiState>(RealtimeCpuUiState.Loading)
     val uiState = _uiState.asStateFlow()
@@ -53,7 +51,7 @@ class RealtimeCpuViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 // 如果是手动触发，不设置为 Loading，以避免界面闪烁
-                val data = getRealtimeCpuDataUseCase()
+                val data = repository.getRealtimeCpuData()
                 _uiState.value = RealtimeCpuUiState.Success(data)
             } catch (e: Exception) {
                 _uiState.value = RealtimeCpuUiState.Error(e.message ?: "未知错误")

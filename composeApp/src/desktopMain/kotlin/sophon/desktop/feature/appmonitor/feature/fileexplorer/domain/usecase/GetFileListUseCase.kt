@@ -1,7 +1,7 @@
 package sophon.desktop.feature.appmonitor.feature.fileexplorer.domain.usecase
 
-import sophon.desktop.feature.appmonitor.feature.fileexplorer.domain.model.FileItem
-import sophon.desktop.feature.appmonitor.feature.fileexplorer.domain.repository.FileExplorerRepository
+import sophon.desktop.feature.appmonitor.feature.fileexplorer.data.repository.FileExplorerRepository
+import sophon.desktop.feature.appmonitor.feature.fileexplorer.model.FileItem
 
 /**
  * 获取文件列表用例

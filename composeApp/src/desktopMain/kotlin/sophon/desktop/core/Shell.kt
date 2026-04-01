@@ -17,6 +17,7 @@ object Shell {
             .start()
         p.inputStream.bufferedReader().use { emit(it.readText()) }
     }.flowOn(Dispatchers.IO)
+
     /**
      * 执行Shell命令，以二进制流(Flow)方式返回输出
      */
@@ -37,7 +38,7 @@ object Shell {
         val exitCode = p.waitFor()
         if (exitCode != 0) {
             val errOutput = p.errorStream.bufferedReader().readText()
-            println("✗ adb 命令错误输出: $errOutput")
+            println("✗ shell 命令错误输出: $errOutput")
         }
     }.flowOn(Dispatchers.IO)
 

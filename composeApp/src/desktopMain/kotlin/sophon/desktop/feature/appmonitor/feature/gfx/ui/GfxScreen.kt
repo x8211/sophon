@@ -49,9 +49,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.DisplayData
-import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.GfxMetrics
-import sophon.desktop.feature.appmonitor.feature.gfx.domain.model.ViewRootInfo
+import sophon.desktop.feature.appmonitor.feature.gfx.model.DisplayData
+import sophon.desktop.feature.appmonitor.feature.gfx.model.GfxMetrics
+import sophon.desktop.feature.appmonitor.feature.gfx.model.ViewRootInfo
 import java.util.Locale
 
 // 配色方案 - 高对比度

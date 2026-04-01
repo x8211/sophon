@@ -9,15 +9,14 @@ import kotlinx.coroutines.launch
 import sophon.desktop.feature.i18n.data.repository.I18nRepositoryImpl
 import sophon.desktop.feature.i18n.data.source.i18nProjectDataStore
 import sophon.desktop.feature.i18n.data.source.i18nToolDataStore
-import sophon.desktop.feature.i18n.domain.model.I18nConfig
-import sophon.desktop.feature.i18n.domain.model.I18nProject
-import sophon.desktop.feature.i18n.domain.usecase.I18nUseCase
+import sophon.desktop.feature.i18n.model.I18nConfig
+import sophon.desktop.feature.i18n.model.I18nProject
 
 /**
  * 多语言功能ViewModel
  */
 class I18NViewModel(
-    private val useCase: I18nUseCase = I18nUseCase(I18nRepositoryImpl())
+    private val repository: I18nRepositoryImpl = I18nRepositoryImpl()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UiState())
@@ -29,7 +28,7 @@ class I18NViewModel(
             _uiState.update { it.copy(isLoading = true) }
             i18nProjectDataStore.data.collect {
                 if (it.absolutePath.isNotBlank()) {
-                    val project = useCase.parseProjectStructure(it.absolutePath)
+                    val project = repository.parseProjectStructure(it.absolutePath)
                     _uiState.update { state ->
                         state.copy(
                             project = project,
@@ -45,7 +44,7 @@ class I18NViewModel(
         viewModelScope.launch {
             i18nToolDataStore.data.collect {
                 if (it.toolPath.isBlank()) {
-                    val foundPath = useCase.findI18nToolPath()
+                    val foundPath = repository.findI18nToolPath()
                     if (foundPath.isNotBlank()) {
                         _uiState.update { state -> state.copy(toolPath = foundPath) }
                     }
@@ -63,7 +62,7 @@ class I18NViewModel(
         if (projectFilePath == null) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val project = useCase.parseProjectStructure(projectFilePath)
+            val project = repository.parseProjectStructure(projectFilePath)
             if (project.isValid) {
                 i18nProjectDataStore.updateData { it.copy(absolutePath = projectFilePath) }
             }
@@ -112,7 +111,7 @@ class I18NViewModel(
                         overrideMode = overrideMode
                     )
                 }
-                useCase.executeTranslation(config).collect { output ->
+                repository.executeTranslation(config).collect { output ->
                     _uiState.update { it.copy(commandOutput = it.commandOutput + output) }
                 }
 

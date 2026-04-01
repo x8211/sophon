@@ -1,9 +1,8 @@
 package sophon.desktop.feature.systemmonitor.feature.temperature.data.repository
 
 import sophon.desktop.core.Shell.oneshotShell
-import sophon.desktop.feature.systemmonitor.feature.temperature.domain.model.MonitorDataPoint
-import sophon.desktop.feature.systemmonitor.feature.temperature.domain.model.TemperatureData
-import sophon.desktop.feature.systemmonitor.feature.temperature.domain.repository.TemperatureRepository
+import sophon.desktop.feature.systemmonitor.feature.temperature.model.MonitorDataPoint
+import sophon.desktop.feature.systemmonitor.feature.temperature.model.TemperatureData
 
 /**
  * 系统监测数据仓库实现

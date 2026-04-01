@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import sophon.desktop.feature.appmonitor.feature.thread.data.repository.ThreadRepositoryImpl
-import sophon.desktop.feature.appmonitor.feature.thread.domain.model.ProcessInfo
-import sophon.desktop.feature.appmonitor.feature.thread.domain.usecase.ThreadUseCase
+import sophon.desktop.feature.appmonitor.feature.thread.domain.usecase.GetThreadInfoUseCase
+import sophon.desktop.feature.appmonitor.feature.thread.model.ProcessInfo
 
 /**
  * 线程信息ViewModel
@@ -15,7 +15,7 @@ import sophon.desktop.feature.appmonitor.feature.thread.domain.usecase.ThreadUse
  * 根据传入的包名加载线程信息
  */
 class ThreadViewModel(
-    private val useCase: ThreadUseCase = ThreadUseCase(ThreadRepositoryImpl())
+    private val useCase: GetThreadInfoUseCase = GetThreadInfoUseCase(ThreadRepositoryImpl())
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProcessInfo?>(null)
@@ -29,7 +29,7 @@ class ThreadViewModel(
     fun loadThreadInfo(packageName: String) {
         viewModelScope.launch {
             try {
-                _uiState.value = useCase.getProcessByPackageName(packageName)
+                _uiState.value = useCase.byPackageName(packageName)
             } catch (_: Exception) {
                 _uiState.value = null
             }

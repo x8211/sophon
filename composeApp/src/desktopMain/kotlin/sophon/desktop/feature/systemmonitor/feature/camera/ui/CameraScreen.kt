@@ -43,13 +43,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.CameraData
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.CameraDeviceInfo
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.CameraEventLog
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.CameraEventType
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.CameraStream
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.DataSpaceHelper
-import sophon.desktop.feature.systemmonitor.feature.camera.domain.model.UsageHelper
+import sophon.desktop.feature.systemmonitor.feature.camera.model.CameraData
+import sophon.desktop.feature.systemmonitor.feature.camera.model.CameraDeviceInfo
+import sophon.desktop.feature.systemmonitor.feature.camera.model.CameraEventLog
+import sophon.desktop.feature.systemmonitor.feature.camera.model.CameraEventType
+import sophon.desktop.feature.systemmonitor.feature.camera.model.CameraStream
+import sophon.desktop.feature.systemmonitor.feature.camera.model.DataSpaceHelper
+import sophon.desktop.feature.systemmonitor.feature.camera.model.UsageHelper
 import sophon.desktop.ui.theme.Dimens
 
 /**

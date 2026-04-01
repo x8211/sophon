@@ -30,8 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import sophon.common.util.FormatTool
-import sophon.desktop.feature.appmonitor.feature.thread.domain.model.ProcessInfo
-import sophon.desktop.feature.appmonitor.feature.thread.domain.model.ThreadInfo
+import sophon.desktop.feature.appmonitor.feature.thread.model.ProcessInfo
+import sophon.desktop.feature.appmonitor.feature.thread.model.ThreadInfo
 
 // 常见线程描述信息 - 尽可能全面覆盖Android常见线程
 private val threadDescriptions = mapOf(

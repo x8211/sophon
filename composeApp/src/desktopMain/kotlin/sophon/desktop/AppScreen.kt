@@ -62,8 +62,8 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import sophon.desktop.core.Context
-import sophon.desktop.core.State
 import sophon.desktop.core.usage.featureUsageDataStore
+import sophon.desktop.feature.adb.model.AdbState
 import sophon.desktop.feature.appmonitor.ui.AppMonitorScreen
 import sophon.desktop.feature.deeplink.ui.DeepLinkScreen
 import sophon.desktop.feature.developer.ui.DeveloperScreen
@@ -178,7 +178,7 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AttachedDeviceDropdownMenu(state: State, onSelectDevice: (String) -> Unit) {
+private fun AttachedDeviceDropdownMenu(state: AdbState, onSelectDevice: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
         InputChip(

@@ -4,7 +4,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import sophon.desktop.core.Shell.streamShell
 import sophon.desktop.feature.deeplink.data.source.deepLinkDataStore
-import sophon.desktop.feature.deeplink.domain.repository.DeepLinkRepository
 
 class DeepLinkRepositoryImpl : DeepLinkRepository {
 

@@ -1,8 +1,7 @@
 package sophon.desktop.feature.appmonitor.data.repository
 
 import sophon.desktop.core.Shell.oneshotShell
-import sophon.desktop.feature.appmonitor.domain.model.AppInfo
-import sophon.desktop.feature.appmonitor.domain.repository.AppMonitorRepository
+import sophon.desktop.feature.appmonitor.model.AppInfo
 
 /**
  * 应用监控仓库实现

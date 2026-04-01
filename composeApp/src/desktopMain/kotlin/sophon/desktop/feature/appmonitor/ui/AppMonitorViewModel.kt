@@ -9,8 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import sophon.desktop.feature.appmonitor.data.repository.AppMonitorRepositoryImpl
-import sophon.desktop.feature.appmonitor.domain.model.AppInfo
-import sophon.desktop.feature.appmonitor.domain.usecase.GetForegroundAppInfoUseCase
+import sophon.desktop.feature.appmonitor.model.AppInfo
 
 /**
  * 应用监控ViewModel
@@ -21,7 +20,6 @@ import sophon.desktop.feature.appmonitor.domain.usecase.GetForegroundAppInfoUseC
 class AppMonitorViewModel : ViewModel() {
 
     private val repository = AppMonitorRepositoryImpl()
-    private val getForegroundAppInfoUseCase = GetForegroundAppInfoUseCase(repository)
 
     // 当前应用信息状态
     private val _appInfo = MutableStateFlow<AppInfo?>(null)
@@ -54,7 +52,7 @@ class AppMonitorViewModel : ViewModel() {
         pollingJob = viewModelScope.launch {
             while (isActive) {
                 try {
-                    val info = getForegroundAppInfoUseCase()
+                    val info = repository.getForegroundAppInfo()
                     _appInfo.value = info
                     _errorMessage.value =
                         if (info == null) "无法获取前台应用信息，请确保设备已连接且有应用在前台运行"

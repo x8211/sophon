@@ -42,12 +42,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import sophon.desktop.feature.systemmonitor.feature.cpu.common.domain.model.ThreadCpuInfo
-import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.domain.model.CpuData
-import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.domain.model.CpuLoadInfo
-import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.domain.model.CpuTimeRange
-import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.domain.model.ProcessCpuInfo
-import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.domain.model.SystemCpuInfo
+import sophon.desktop.feature.systemmonitor.feature.cpu.common.model.ThreadCpuInfo
+import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.model.CpuData
+import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.model.CpuLoadInfo
+import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.model.CpuTimeRange
+import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.model.ProcessCpuInfo
+import sophon.desktop.feature.systemmonitor.feature.cpu.dumpsys.model.SystemCpuInfo
 import sophon.desktop.ui.theme.Dimens
 
 /**

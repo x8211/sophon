@@ -1,14 +1,13 @@
 package sophon.desktop.feature.systemmonitor.feature.cpu.realtime.data.repository
 
 import sophon.desktop.core.Shell.oneshotShell
-import sophon.desktop.feature.systemmonitor.feature.cpu.common.domain.model.ThreadCpuInfo
-import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.domain.model.RealtimeCpuData
-import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.domain.model.RealtimeMemoryInfo
-import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.domain.model.RealtimeProcessInfo
-import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.domain.model.RealtimeSwapInfo
-import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.domain.model.RealtimeSystemCpuInfo
-import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.domain.model.RealtimeTaskStats
-import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.domain.repository.RealtimeCpuRepository
+import sophon.desktop.feature.systemmonitor.feature.cpu.common.model.ThreadCpuInfo
+import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.model.RealtimeCpuData
+import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.model.RealtimeMemoryInfo
+import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.model.RealtimeProcessInfo
+import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.model.RealtimeSwapInfo
+import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.model.RealtimeSystemCpuInfo
+import sophon.desktop.feature.systemmonitor.feature.cpu.realtime.model.RealtimeTaskStats
 import java.util.Locale
 
 /**

@@ -1,7 +1,6 @@
 package sophon.desktop.feature.proxy.data.repository
 
 import sophon.desktop.core.Shell.oneshotShell
-import sophon.desktop.feature.proxy.domain.repository.ProxyRepository
 import java.net.NetworkInterface
 
 class ProxyRepositoryImpl : ProxyRepository {

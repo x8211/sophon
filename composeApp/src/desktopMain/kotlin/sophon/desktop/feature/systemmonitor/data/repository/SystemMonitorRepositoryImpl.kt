@@ -1,7 +1,5 @@
 package sophon.desktop.feature.systemmonitor.data.repository
 
-import sophon.desktop.feature.systemmonitor.domain.repository.SystemMonitorRepository
-
 /**
  * 系统监控仓库实现
  *

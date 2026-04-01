@@ -35,9 +35,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import sophon.desktop.feature.appmonitor.feature.activitystack.domain.model.ActivityInfo
-import sophon.desktop.feature.appmonitor.feature.activitystack.domain.model.FragmentInfo
-import sophon.desktop.feature.appmonitor.feature.activitystack.domain.model.LifecycleComponent
+import sophon.desktop.feature.appmonitor.feature.activitystack.model.ActivityInfo
+import sophon.desktop.feature.appmonitor.feature.activitystack.model.FragmentInfo
+import sophon.desktop.feature.appmonitor.feature.activitystack.model.LifecycleComponent
 
 /**
  * 递归渲染组件树

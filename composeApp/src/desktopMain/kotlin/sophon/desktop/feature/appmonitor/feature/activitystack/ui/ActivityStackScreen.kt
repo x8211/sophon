@@ -22,7 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import sophon.desktop.feature.appmonitor.feature.activitystack.domain.model.LifecycleComponent
+import sophon.desktop.feature.appmonitor.feature.activitystack.model.LifecycleComponent
 
 /**
  * Activity栈主界面
