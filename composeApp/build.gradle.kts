@@ -143,10 +143,29 @@ compose.desktop {
         }
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "Sophon"
             packageVersion = "1.0.0"
             includeAllModules = true
+
+            // appResourcesRootDir 下的 common/、windows/、macOS/、linux/ 子目录
+            // 会分别在各平台打包时自动合并进安装包（可通过 compose.application.resources.dir 访问）
+            appResourcesRootDir.set(layout.projectDirectory.dir("src/desktopMain/appResources"))
+
+            windows {
+                // Windows 安装包图标（优先 .ico，当前使用 .png 由 jpackage 自动转换）
+                iconFile.set(layout.projectDirectory.dir("src/desktopMain/launcher/icon.png").asFile)
+                // 安装目录名称
+                dirChooser = true
+                // 每用户安装（无需管理员权限）
+                perUserInstall = true
+                // 开始菜单快捷方式分组名
+                menuGroup = "Sophon"
+                // 桌面快捷方式
+                shortcut = true
+                // MSI/EXE 升级 UUID，固定后可无缝升级，请勿修改
+                upgradeUuid = "3B3E2B2A-1C4D-4E5F-8A9B-0C1D2E3F4A5B"
+            }
 
             macOS {
                 // App Bundle 唯一标识（反向域名格式，需与 Apple Developer 后台一致）
