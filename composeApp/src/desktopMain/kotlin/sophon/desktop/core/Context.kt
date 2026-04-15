@@ -42,6 +42,11 @@ object Context {
             command = command.replace("adb", "cmd /c adb").replace("grep", "findstr")
         }
         val parentPath = state.adbParentPath ?: return command
+        println("""format adb cmd:
+            |$parentPath
+            |$command
+            |=========
+        """.trimMargin())
         return "$parentPath/$command"
     }
 }
