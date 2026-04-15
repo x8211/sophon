@@ -43,10 +43,12 @@ class AppMonitorRepositoryImpl : AppMonitorRepository {
      * @return 包名字符串，如果获取失败返回空字符串
      */
     private suspend fun getForegroundPackageName(): String {
-        return "adb shell dumpsys activity activities | grep '* Task{' | head -n 1"
+        return "adb shell dumpsys activity activities"
             .oneshotShell { output ->
-                // 匹配格式: * Task{12345:com.example.app/...}
-                "A=\\d+:(\\S+)".toRegex().find(output)?.groupValues?.getOrNull(1) ?: ""
+                output.lineSequence()
+                    .firstOrNull { it.contains("* Task{") }
+                    ?.let { "A=\\d+:(\\S+)".toRegex().find(it)?.groupValues?.getOrNull(1) }
+                    ?: ""
             }
     }
     
