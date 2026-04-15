@@ -20,9 +20,7 @@ object Shell {
             command = command.replace("adb", "adb -s ${state.selectedDevice}")
         }
         command = executor.adaptCommand(command)
-        return "\"${state.adbToolPath}\"${command.removePrefix("adb")}".also {
-            println("finalCmd: $it")
-        }
+        return "${state.adbToolPath} ${command.removePrefix("adb")}"
     }
 
     /**
@@ -31,7 +29,18 @@ object Shell {
     fun String.streamShell() = flow {
         val cmd = formatIfAdbCmd(this@streamShell)
         val p = executor.createProcess(cmd, redirectErrorStream = true)
-        p.inputStream.bufferedReader().use { emit(it.readText()) }
+        p.inputStream.bufferedReader().use {
+            val text = it.readText()
+            if (cmd.contains("devices")) {
+                println(
+                    """streamShell output: 
+                    |cmd: $cmd
+                    |output: $text
+                """.trimMargin()
+                )
+            }
+            emit(text)
+        }
     }.flowOn(Dispatchers.IO)
 
     /**

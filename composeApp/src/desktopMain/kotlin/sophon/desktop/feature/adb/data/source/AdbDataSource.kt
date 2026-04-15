@@ -6,7 +6,7 @@ import java.io.File
 class AdbDataSource {
 
     suspend fun fetchConnectedDevices(adbPath: String): List<String> =
-        "\"$adbPath\" devices".oneshotShell { result ->
+        "$adbPath devices".oneshotShell { result ->
             val pattern = Regex("^([\\w.:_-]+)\\s+device\\s*$", RegexOption.MULTILINE)
             pattern.findAll(result).map { it.groupValues[1] }.toList()
         }
