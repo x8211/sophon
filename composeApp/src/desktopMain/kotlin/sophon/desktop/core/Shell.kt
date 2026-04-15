@@ -20,15 +20,9 @@ object Shell {
             command = command.replace("adb", "adb -s ${state.selectedDevice}")
         }
         command = executor.adaptCommand(command)
-        val parentPath = state.adbParentPath ?: return command
-        println(
-            """format adb cmd:
-            |$parentPath
-            |$command
-            |=========
-            """.trimMargin()
-        )
-        return "$parentPath/$command"
+        return "${state.adbToolPath}${command.removePrefix("adb")}".also {
+            println("finalCmd: $it")
+        }
     }
 
     /**
