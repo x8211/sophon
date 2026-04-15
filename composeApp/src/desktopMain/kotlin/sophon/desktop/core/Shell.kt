@@ -33,11 +33,13 @@ object Shell {
     }.flowOn(Dispatchers.IO)
 
     /**
-     * 执行Shell命令，以二进制流(Flow)方式返回输出
+     * 执行Shell命令，以二进制流(Flow)方式返回输出。
+     * 使用 createBinaryProcess 直接启动可执行文件，绕过 shell 中间层，
+     * 避免 Windows cmd /c 对 stdout 进行 LF→CRLF 文本模式转换导致二进制数据损坏。
      */
     fun String.byteStreamShell() = flow {
         val cmd = formatIfAdbCmd(this@byteStreamShell)
-        val p = executor.createProcess(cmd, redirectErrorStream = false)
+        val p = executor.createBinaryProcess(cmd, redirectErrorStream = false)
 
         p.inputStream.use { input ->
             val buffer = ByteArray(8192)

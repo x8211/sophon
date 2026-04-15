@@ -12,8 +12,9 @@ import java.sql.DriverManager
  * gRPC 捕获仓库实现类
  *
  * 核心流程：
- * 1. 使用 `adb shell run-as <packageName> cat databases/Protodroid.db` 将数据库
- *    以 stdout 方式输出，并通过进程重定向写入本地 PB_HOME 目录。
+ * 1. 使用 `adb exec-out run-as <packageName> cat databases/Protodroid.db` 将数据库
+ *    以二进制安全的 stdout 方式输出，并写入本地 PB_HOME 目录。
+ *    使用 exec-out 而非 shell，避免 PTY 和 Windows cmd 的 LF→CRLF 文本转换破坏二进制文件。
  * 2. 读取本地 SQLite 文件，查询 ProtodroidDataEntity 表返回记录列表。
  *
  * 注意：run-as 命令要求目标应用为 debuggable 版本。
@@ -151,7 +152,7 @@ class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
         }
 
         return try {
-            val rawCmd = "adb shell run-as $packageName cat databases/$dbName"
+            val rawCmd = "adb exec-out run-as $packageName cat databases/$dbName"
             println("[GrpcCapture] Executing command: $rawCmd")
 
             println("[GrpcCapture] Writing adb stdout to local file...")
