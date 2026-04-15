@@ -32,7 +32,7 @@ class UnixShellExecutor : ShellExecutor {
 class WindowsShellExecutor : ShellExecutor {
 
     override fun createProcess(command: String, redirectErrorStream: Boolean): Process =
-        ProcessBuilder("cmd", "/c", "chcp 65001 >nul && $command")
+        ProcessBuilder("cmd", "/c", command)
             .redirectErrorStream(redirectErrorStream)
             .start()
 
