@@ -20,7 +20,7 @@ object Shell {
             command = command.replace("adb", "adb -s ${state.selectedDevice}")
         }
         command = executor.adaptCommand(command)
-        return "${state.adbToolPath}${command.removePrefix("adb")}".also {
+        return "\"${state.adbToolPath}\"${command.removePrefix("adb")}".also {
             println("finalCmd: $it")
         }
     }
