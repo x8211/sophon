@@ -8,7 +8,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
-import sophon.desktop.core.PB_HOME
+import sophon.desktop.core.CACHE_HOME
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -44,6 +44,6 @@ inline fun <reified T> createDataStore(
 ): DataStore<T> {
     return DataStoreFactory.create(
         serializer = JsonSerializer(defaultValue, serializer),
-        produceFile = { File("$PB_HOME/$fileName") }
+        produceFile = { File("$CACHE_HOME/$fileName") }
     )
 }

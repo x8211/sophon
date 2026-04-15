@@ -9,7 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import sophon.desktop.core.PB_HOME
+import sophon.desktop.core.CACHE_HOME
 import sophon.desktop.generated.AppInfo
 import sophon.desktop.ui.components.DefaultListItem
 
@@ -33,7 +33,7 @@ fun SettingsScreen() {
 
         DefaultListItem(
             title = "缓存路径",
-            description = PB_HOME,
+            description = CACHE_HOME,
         )
 
         DefaultListItem(

@@ -2,7 +2,7 @@ package sophon.desktop.feature.appmonitor.feature.grpc.data.repository
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import sophon.desktop.core.PB_HOME
+import sophon.desktop.core.CACHE_HOME
 import sophon.desktop.core.Shell.byteStreamShell
 import sophon.desktop.feature.appmonitor.feature.grpc.model.GrpcCaptureModel
 import java.io.File
@@ -13,7 +13,7 @@ import java.sql.DriverManager
  *
  * 核心流程：
  * 1. 使用 `adb exec-out run-as <packageName> cat databases/Protodroid.db` 将数据库
- *    以二进制安全的 stdout 方式输出，并写入本地 PB_HOME 目录。
+ *    以二进制安全的 stdout 方式输出，并写入本地 CACHE_HOME 目录。
  *    使用 exec-out 而非 shell，避免 PTY 和 Windows cmd 的 LF→CRLF 文本转换破坏二进制文件。
  * 2. 读取本地 SQLite 文件，查询 ProtodroidDataEntity 表返回记录列表。
  *
@@ -23,7 +23,7 @@ class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
 
     private val dbName = "Protodroid.db"
 
-    private val localDbFile = File(PB_HOME, dbName)
+    private val localDbFile = File(CACHE_HOME, dbName)
 
     // -------------------------------------------------------------------
     // 读取记录
@@ -125,7 +125,7 @@ class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
     // -------------------------------------------------------------------
 
     /**
-     * 通过 `run-as` 命令将目标应用的 Protodroid.db 拉取到本地 PB_HOME 目录
+     * 通过 `run-as` 命令将目标应用的 Protodroid.db 拉取到本地 CACHE_HOME 目录
      *
      * 执行流程：
      * 1. 确保本地缓存目录存在

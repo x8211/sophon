@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
+import sophon.desktop.core.APP_BUNDLE_PATH
 import sophon.desktop.core.Shell.simpleShell
 import sophon.desktop.feature.i18n.model.I18nConfig
 import sophon.desktop.feature.i18n.model.I18nModule
@@ -25,7 +26,7 @@ class I18nRepositoryImpl : I18nRepository {
         val resourcesDir = System.getProperty("compose.application.resources.dir")
         if (resourcesDir != null) {
             // 打包模式：在资源目录下的 tools/i18n
-            val deployedI18N = File("/Applications/Sophon.app/Contents/Resources/tools", "i18n")
+            val deployedI18N = File("$APP_BUNDLE_PATH/tools", "i18n")
             if (deployedI18N.exists()) {
                 return deployedI18N.absolutePath
             }

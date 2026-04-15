@@ -5,6 +5,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.text.SimpleDateFormat
 import java.util.Date
 
+val appName: String by project
+val appVersion: String by project
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
@@ -20,9 +23,11 @@ apply {
 val generateAppInfo by tasks.registering {
     val outputDir = layout.buildDirectory.dir("generated/appInfo/kotlin")
     val buildTimeStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
-    val appVersion = compose.desktop.application.nativeDistributions.packageVersion
-    inputs.property("version", appVersion)
+    val localAppName = appName
+    val localAppVersion = appVersion
+    inputs.property("version", localAppVersion)
     inputs.property("buildTime", buildTimeStr)
+    inputs.property("appName", localAppName)
     outputs.dir(outputDir)
 
     doLast {
@@ -34,7 +39,8 @@ val generateAppInfo by tasks.registering {
             package sophon.desktop.generated
 
             object AppInfo {
-                const val APP_VERSION = "$appVersion"
+                const val APP_NAME = "$localAppName"
+                const val APP_VERSION = "$localAppVersion"
                 const val BUILD_TIME = "$buildTime"
             }
             """.trimIndent()
@@ -144,8 +150,8 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb)
-            packageName = "Sophon"
-            packageVersion = "1.0.0"
+            packageName = appName
+            packageVersion = appVersion
             includeAllModules = true
 
             // appResourcesRootDir 下的 common/、windows/、macOS/、linux/ 子目录
@@ -160,7 +166,7 @@ compose.desktop {
                 // 每用户安装（无需管理员权限）
                 perUserInstall = true
                 // 开始菜单快捷方式分组名
-                menuGroup = "Sophon"
+                menuGroup = appName
                 // 桌面快捷方式
                 shortcut = true
                 // MSI/EXE 升级 UUID，固定后可无缝升级，请勿修改
@@ -171,7 +177,7 @@ compose.desktop {
                 // App Bundle 唯一标识（反向域名格式，需与 Apple Developer 后台一致）
                 bundleID = "com.sophon.desktop"
                 // Dock/菜单栏显示名称
-                dockName = "Sophon"
+                dockName = appName
                 // 设置图标
                 iconFile.set(layout.projectDirectory.dir("src/desktopMain/launcher/icon.icns").asFile)
 

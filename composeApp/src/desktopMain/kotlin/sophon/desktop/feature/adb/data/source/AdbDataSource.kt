@@ -1,5 +1,6 @@
 package sophon.desktop.feature.adb.data.source
 
+import sophon.desktop.core.APP_BUNDLE_PATH
 import sophon.desktop.core.Shell.oneshotShell
 import java.io.File
 
@@ -21,7 +22,7 @@ class AdbDataSource {
                 val deployedAdb = File(resourcesDir, "tools/windows/$adbBinary")
                 if (deployedAdb.exists()) return deployedAdb.absolutePath
             } else {
-                val deployedAdb = File("/Applications/Sophon.app/Contents/Resources/tools", adbBinary)
+                val deployedAdb = File("$APP_BUNDLE_PATH/tools", adbBinary)
                 if (deployedAdb.exists()) return deployedAdb.absolutePath
             }
         }

@@ -138,6 +138,8 @@ abstract class CopyToolsToAppTask : DefaultTask() {
 // 公共路径定义
 // ---------------------------------------------------------------
 
+val appName: String by project
+
 /** 源目录根: composeApp/src/desktopMain/tools */
 val toolsSourceDir: File = project.rootProject.file("composeApp/src/desktopMain/tools")
 
@@ -182,7 +184,7 @@ tasks.register<CopyToolsToAppTask>("copyToolsToMacOSApp") {
     sourceDir.set(File(toolsSourceDir, "macos"))
     destResourcesDirPath.set(
         project.layout.buildDirectory
-            .dir("compose/binaries/main/app/Sophon.app/Contents/Resources")
+            .dir("compose/binaries/main/app/${appName}.app/Contents/Resources")
             .map { it.asFile.absolutePath }
     )
 }
@@ -193,7 +195,7 @@ tasks.register<CopyToolsToAppTask>("copyToolsToMacOSAppRelease") {
     sourceDir.set(File(toolsSourceDir, "macos"))
     destResourcesDirPath.set(
         project.layout.buildDirectory
-            .dir("compose/binaries/main-release/app/Sophon.app/Contents/Resources")
+            .dir("compose/binaries/main-release/app/${appName}.app/Contents/Resources")
             .map { it.asFile.absolutePath }
     )
 }
