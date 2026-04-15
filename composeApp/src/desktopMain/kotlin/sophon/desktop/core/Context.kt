@@ -30,23 +30,4 @@ object Context {
             adbRepository.selectDevice(deviceName)
         }
     }
-
-    fun formatIfAdbCmd(input: String): String {
-        if (!input.startsWith("adb")) return input
-        val state = adbRepository.getAdbState().value
-        var command = input
-        if (state.selectedDevice.isNotBlank()) {
-            command = command.replace("adb", "adb -s ${state.selectedDevice}")
-        }
-        if (System.getProperty("os.name").contains("Windows")) {
-            command = command.replace("adb", "cmd /c adb").replace("grep", "findstr")
-        }
-        val parentPath = state.adbParentPath ?: return command
-        println("""format adb cmd:
-            |$parentPath
-            |$command
-            |=========
-        """.trimMargin())
-        return "$parentPath/$command"
-    }
 }

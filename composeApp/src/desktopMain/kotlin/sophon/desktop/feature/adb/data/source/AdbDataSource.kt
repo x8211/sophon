@@ -12,18 +12,37 @@ class AdbDataSource {
         }
 
     fun resolveBuiltInAdbPath(): String {
+        val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+        val adbBinary = if (isWindows) "adb.exe" else "adb"
+
         val resourcesDir = System.getProperty("compose.application.resources.dir")
         if (resourcesDir != null) {
-            val deployedAdb = File("/Applications/Sophon.app/Contents/Resources/tools", "adb")
-            if (deployedAdb.exists()) return deployedAdb.absolutePath
+            if (isWindows) {
+                val deployedAdb = File(resourcesDir, "tools/windows/$adbBinary")
+                if (deployedAdb.exists()) return deployedAdb.absolutePath
+            } else {
+                val deployedAdb = File("/Applications/Sophon.app/Contents/Resources/tools", adbBinary)
+                if (deployedAdb.exists()) return deployedAdb.absolutePath
+            }
         }
 
-        val candidatePaths = listOf(
-            "composeApp/src/desktopMain/tools/adb",
-            "src/desktopMain/tools/adb",
-            "tools/adb"
-        )
-        return candidatePaths.firstOrNull { File(it).exists() }
-            ?: File("composeApp/src/desktopMain/tools/adb").absolutePath
+        val candidateDirs = if (isWindows) {
+            listOf(
+                "composeApp/src/desktopMain/tools/windows",
+                "src/desktopMain/tools/windows",
+                "tools/windows"
+            )
+        } else {
+            listOf(
+                "composeApp/src/desktopMain/tools",
+                "src/desktopMain/tools",
+                "tools"
+            )
+        }
+
+        return candidateDirs
+            .map { File(it, adbBinary) }
+            .firstOrNull { it.exists() }?.absolutePath
+            ?: File(candidateDirs.first(), adbBinary).absolutePath
     }
 }

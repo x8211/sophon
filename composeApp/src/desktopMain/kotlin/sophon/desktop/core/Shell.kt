@@ -7,14 +7,36 @@ import kotlinx.coroutines.flow.toList
 
 object Shell {
 
+    private val executor: ShellExecutor = ShellExecutor.create()
+
+    /**
+     * 若命令以 "adb" 开头，自动注入已选设备、平台适配和 adb 路径前缀。
+     */
+    fun formatIfAdbCmd(input: String): String {
+        if (!input.startsWith("adb")) return input
+        val state = Context.stream.value
+        var command = input
+        if (state.selectedDevice.isNotBlank()) {
+            command = command.replace("adb", "adb -s ${state.selectedDevice}")
+        }
+        command = executor.adaptCommand(command)
+        val parentPath = state.adbParentPath ?: return command
+        println(
+            """format adb cmd:
+            |$parentPath
+            |$command
+            |=========
+            """.trimMargin()
+        )
+        return "$parentPath/$command"
+    }
+
     /**
      * 执行Shell命令，流式返回输出
      */
     fun String.streamShell() = flow {
-        val cmd = Context.formatIfAdbCmd(this@streamShell)
-        val p = ProcessBuilder("/bin/bash", "-c", cmd)
-            .redirectErrorStream(true)
-            .start()
+        val cmd = formatIfAdbCmd(this@streamShell)
+        val p = executor.createProcess(cmd, redirectErrorStream = true)
         p.inputStream.bufferedReader().use { emit(it.readText()) }
     }.flowOn(Dispatchers.IO)
 
@@ -22,10 +44,8 @@ object Shell {
      * 执行Shell命令，以二进制流(Flow)方式返回输出
      */
     fun String.byteStreamShell() = flow {
-        val cmd = Context.formatIfAdbCmd(this@byteStreamShell)
-        val p = ProcessBuilder("/bin/bash", "-c", cmd)
-            .redirectErrorStream(false)
-            .start()
+        val cmd = formatIfAdbCmd(this@byteStreamShell)
+        val p = executor.createProcess(cmd, redirectErrorStream = false)
 
         p.inputStream.use { input ->
             val buffer = ByteArray(8192)
