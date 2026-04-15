@@ -6,9 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import sophon.desktop.core.datastore.DataStoreProvider
 import sophon.desktop.feature.i18n.data.repository.I18nRepositoryImpl
-import sophon.desktop.feature.i18n.data.source.i18nProjectDataStore
-import sophon.desktop.feature.i18n.data.source.i18nToolDataStore
 import sophon.desktop.feature.i18n.model.I18nConfig
 import sophon.desktop.feature.i18n.model.I18nProject
 
@@ -26,7 +25,7 @@ class I18NViewModel(
         // Load initial state
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            i18nProjectDataStore.data.collect {
+            DataStoreProvider.i18nProject.data.collect {
                 if (it.absolutePath.isNotBlank()) {
                     val project = repository.parseProjectStructure(it.absolutePath)
                     _uiState.update { state ->
@@ -42,7 +41,7 @@ class I18NViewModel(
         }
 
         viewModelScope.launch {
-            i18nToolDataStore.data.collect {
+            DataStoreProvider.i18nTool.data.collect {
                 if (it.toolPath.isBlank()) {
                     val foundPath = repository.findI18nToolPath()
                     if (foundPath.isNotBlank()) {
@@ -64,7 +63,7 @@ class I18NViewModel(
             _uiState.update { it.copy(isLoading = true) }
             val project = repository.parseProjectStructure(projectFilePath)
             if (project.isValid) {
-                i18nProjectDataStore.updateData { it.copy(absolutePath = projectFilePath) }
+                DataStoreProvider.i18nProject.updateData { it.copy(absolutePath = projectFilePath) }
             }
             _uiState.update {
                 it.copy(
@@ -94,11 +93,11 @@ class I18NViewModel(
                 _uiState.update { it.copy(commandOutput = "正在执行...\n") }
 
                 // 保存工具路径到DataStore
-                i18nToolDataStore.updateData { it.copy(toolPath = _uiState.value.toolPath) }
+                DataStoreProvider.i18nTool.updateData { it.copy(toolPath = _uiState.value.toolPath) }
 
                 // 保存项目路径到DataStore
                 if (_uiState.value.project.isValid) {
-                    i18nProjectDataStore.updateData {
+                    DataStoreProvider.i18nProject.updateData {
                         it.copy(absolutePath = _uiState.value.project.absolutePath)
                     }
                 }

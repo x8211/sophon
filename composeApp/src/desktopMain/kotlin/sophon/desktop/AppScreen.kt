@@ -62,7 +62,7 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import sophon.desktop.core.Context
-import sophon.desktop.core.usage.featureUsageDataStore
+import sophon.desktop.core.datastore.DataStoreProvider
 import sophon.desktop.feature.adb.model.AdbState
 import sophon.desktop.feature.appmonitor.ui.AppMonitorScreen
 import sophon.desktop.feature.deeplink.ui.DeepLinkScreen
@@ -104,7 +104,7 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
     var sortedItems by remember { mutableStateOf(AppScreen.entries.toList()) }
 
     LaunchedEffect(Unit) {
-        val usage = featureUsageDataStore.data.first()
+        val usage = DataStoreProvider.featureUsage.data.first()
         val list = AppScreen.entries.toMutableList()
         list.sortByDescending { usage.usages[it.name] ?: 0 }
         sortedItems = list
@@ -120,7 +120,7 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
             onNavigate = {
                 navController.navigate(it.name)
                 scope.launch {
-                    featureUsageDataStore.updateData { current ->
+                    DataStoreProvider.featureUsage.updateData { current ->
                         val newCount = (current.usages[it.name] ?: 0) + 1
                         current.copy(usages = current.usages + (it.name to newCount))
                     }
