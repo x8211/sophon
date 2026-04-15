@@ -20,10 +20,8 @@ import java.sql.DriverManager
  */
 class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
 
-    /** 本地数据库文件名 */
     private val dbName = "Protodroid.db"
 
-    /** 本地缓存目录下的数据库文件 */
     private val localDbFile = File(PB_HOME, dbName)
 
     // -------------------------------------------------------------------
@@ -41,29 +39,28 @@ class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
      * @return ProtodroidDataEntity 表中最近 100 条记录，按 create_timestamp 倒序
      */
     override suspend fun getCapturedRecords(): List<GrpcCaptureModel> {
-        println("[GrpcCapture] >>> getCapturedRecords() 开始")
-        println("[GrpcCapture] 本地数据库路径: ${localDbFile.absolutePath}")
+        println("[GrpcCapture] >>> getCapturedRecords() started")
+        println("[GrpcCapture] Local database path: ${localDbFile.absolutePath}")
 
         if (!localDbFile.exists()) {
-            println("[GrpcCapture] ✗ 本地数据库文件不存在，请先执行刷新操作")
+            println("[GrpcCapture] ✗ Local database file does not exist, please refresh first")
             return emptyList()
         }
 
-        println("[GrpcCapture] ✓ 本地数据库文件存在，大小: ${localDbFile.length()} bytes")
+        println("[GrpcCapture] ✓ Local database file exists, size: ${localDbFile.length()} bytes")
 
         val records = mutableListOf<GrpcCaptureModel>()
         return withContext(Dispatchers.IO) {
             try {
                 Class.forName("org.sqlite.JDBC")
-                println("[GrpcCapture] ✓ SQLite JDBC 驱动加载成功")
+                println("[GrpcCapture] ✓ SQLite JDBC driver loaded successfully")
 
                 DriverManager.getConnection("jdbc:sqlite:${localDbFile.absolutePath}")
                     .use { connection ->
-                        println("[GrpcCapture] ✓ 数据库连接建立成功")
+                        println("[GrpcCapture] ✓ Database connection established")
 
                         val stmt = connection.createStatement()
 
-                        // ── 打印所有表名（调试用） ──────────────────────────────────
                         val allTables = mutableListOf<String>()
                         val tableRs = stmt.executeQuery(
                             "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
@@ -71,9 +68,8 @@ class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
                         while (tableRs.next()) {
                             allTables.add(tableRs.getString("name"))
                         }
-                        println("[GrpcCapture] ✓ 数据库所有表名(${allTables.size}): ${allTables.joinToString()}")
+                        println("[GrpcCapture] ✓ All tables (${allTables.size}): ${allTables.joinToString()}")
 
-                        // ── 打印目标表列信息（调试用） ────────────────────────────────
                         val pragmaRs = connection.createStatement()
                             .executeQuery("PRAGMA table_info(ProtodroidDataEntity)")
                         val columns = mutableListOf<String>()
@@ -81,14 +77,13 @@ class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
                             val colName = pragmaRs.getString("name")
                             val colType = pragmaRs.getString("type")
                             columns.add(colName)
-                            println("[GrpcCapture]   列: $colName ($colType)")
+                            println("[GrpcCapture]   Column: $colName ($colType)")
                         }
-                        println("[GrpcCapture] ✓ 表 ProtodroidDataEntity 共 ${columns.size} 列: ${columns.joinToString()}")
+                        println("[GrpcCapture] ✓ Table ProtodroidDataEntity has ${columns.size} columns: ${columns.joinToString()}")
 
-                        // ── 执行查询 ──────────────────────────────────────────────────
                         val sql =
                             "SELECT * FROM ProtodroidDataEntity ORDER BY create_timestamp DESC LIMIT 100"
-                        println("[GrpcCapture] 执行查询: $sql")
+                        println("[GrpcCapture] Executing query: $sql")
 
                         val resultSet = connection.createStatement().executeQuery(sql)
                         var count = 0
@@ -113,11 +108,11 @@ class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
                             )
                             count++
                         }
-                        println("[GrpcCapture] ✓ 查询完成，共读取 $count 条记录")
+                        println("[GrpcCapture] ✓ Query complete, fetched $count records")
                     }
                 records
             } catch (e: Exception) {
-                println("[GrpcCapture] ✗ 读取数据库异常: ${e.message}")
+                println("[GrpcCapture] ✗ Failed to read database: ${e.message}")
                 e.printStackTrace()
                 emptyList()
             }
@@ -140,29 +135,26 @@ class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
      * @return true 表示文件拉取并写入成功
      */
     override suspend fun refreshDatabase(packageName: String): Boolean {
-        println("[GrpcCapture] >>> refreshDatabase() 开始，目标包名: $packageName")
-        // 步骤 1：确保本地目录存在
+        println("[GrpcCapture] >>> refreshDatabase() started, target package: $packageName")
+
         val parentDir = localDbFile.parentFile
         if (parentDir != null && !parentDir.exists()) {
             parentDir.mkdirs()
-            println("[GrpcCapture] ✓ 创建本地缓存目录: ${parentDir.absolutePath}")
+            println("[GrpcCapture] ✓ Created local cache directory: ${parentDir.absolutePath}")
         } else {
-            println("[GrpcCapture] ✓ 本地缓存目录已存在: ${parentDir?.absolutePath}")
+            println("[GrpcCapture] ✓ Local cache directory already exists: ${parentDir?.absolutePath}")
         }
 
-        // 步骤 2：清除旧文件
         if (localDbFile.exists()) {
             val deleted = localDbFile.delete()
-            println("[GrpcCapture] ${if (deleted) "✓" else "✗"} 清除旧数据库文件: ${localDbFile.absolutePath}")
+            println("[GrpcCapture] ${if (deleted) "✓" else "✗"} Deleted old database file: ${localDbFile.absolutePath}")
         }
 
         return try {
-            // 步骤 3：使用 byteStreamShell 拉取数据库（以避免字符串转换导致二进制数据损坏）
             val rawCmd = "adb shell run-as $packageName cat databases/$dbName"
-            println("[GrpcCapture] 执行命令: $rawCmd")
+            println("[GrpcCapture] Executing command: $rawCmd")
 
-            // 步骤 4：将流写入本地文件
-            println("[GrpcCapture] 开始从 adb stdout 写入本地文件...")
+            println("[GrpcCapture] Writing adb stdout to local file...")
             var bytesWritten = 0L
             localDbFile.outputStream().use { outputStream ->
                 rawCmd.byteStreamShell().collect { chunk ->
@@ -172,26 +164,23 @@ class GrpcCaptureRepositoryImpl : GrpcCaptureRepository {
                     }
                 }
             }
-            println("[GrpcCapture] ✓ 写入完成，共写入 $bytesWritten bytes")
+            println("[GrpcCapture] ✓ Write complete, total $bytesWritten bytes written")
 
-            // 步骤 6：校验本地文件
             val fileExists = localDbFile.exists()
             val fileSize = if (fileExists) localDbFile.length() else 0L
 
-            println("[GrpcCapture] 本地文件校验 → 存在: $fileExists | 大小: $fileSize bytes")
+            println("[GrpcCapture] Local file validation → exists: $fileExists | size: $fileSize bytes")
 
-            // SQLite 文件头最小为 100 bytes，小于此值说明文件无效
             val success = fileExists && fileSize > 100L
             if (success) {
-                println("[GrpcCapture] ✓ 数据库拉取成功！路径: ${localDbFile.absolutePath}")
+                println("[GrpcCapture] ✓ Database pull succeeded! Path: ${localDbFile.absolutePath}")
             } else {
-                println("[GrpcCapture] ✗ 数据库拉取失败：文件不存在或内容为空")
-                // 清理无效文件
+                println("[GrpcCapture] ✗ Database pull failed: file does not exist or is empty")
                 if (fileExists) localDbFile.delete()
             }
             success
         } catch (e: Exception) {
-            println("[GrpcCapture] ✗ refreshDatabase 发生异常: ${e.message}")
+            println("[GrpcCapture] ✗ refreshDatabase exception: ${e.message}")
             e.printStackTrace()
             false
         }

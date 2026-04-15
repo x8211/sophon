@@ -29,18 +29,7 @@ object Shell {
     fun String.streamShell() = flow {
         val cmd = formatIfAdbCmd(this@streamShell)
         val p = executor.createProcess(cmd, redirectErrorStream = true)
-        p.inputStream.bufferedReader().use {
-            val text = it.readText()
-            if (cmd.contains("devices")) {
-                println(
-                    """streamShell output: 
-                    |cmd: $cmd
-                    |output: $text
-                """.trimMargin()
-                )
-            }
-            emit(text)
-        }
+        p.inputStream.bufferedReader().use { emit(it.readText()) }
     }.flowOn(Dispatchers.IO)
 
     /**
