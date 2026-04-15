@@ -34,16 +34,24 @@ class JsonSerializer<T>(
     }
 }
 
+private val dataStoreRegistry = mutableMapOf<String, DataStore<*>>()
+private val dataStoreLock = Any()
+
 /**
- * 创建 DataStore 的工厂扩展方法
+ * 创建 DataStore 的工厂方法，保证同一 fileName 只创建一个实例
  */
-inline fun <reified T> createDataStore(
+@Suppress("UNCHECKED_CAST")
+fun <T> createDataStore(
     fileName: String,
     defaultValue: T,
     serializer: kotlinx.serialization.KSerializer<T>
 ): DataStore<T> {
-    return DataStoreFactory.create(
-        serializer = JsonSerializer(defaultValue, serializer),
-        produceFile = { File("$CACHE_HOME/$fileName") }
-    )
+    return synchronized(dataStoreLock) {
+        dataStoreRegistry.getOrPut(fileName) {
+            DataStoreFactory.create(
+                serializer = JsonSerializer(defaultValue, serializer),
+                produceFile = { File("$CACHE_HOME/$fileName") }
+            )
+        } as DataStore<T>
+    }
 }
