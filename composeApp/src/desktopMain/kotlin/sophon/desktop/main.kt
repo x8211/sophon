@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import sophon.desktop.core.APP_NAME
 import sophon.desktop.ui.theme.AppTheme
 
 @Composable
@@ -24,7 +25,7 @@ fun main() = application {
         onCloseRequest = {
             exitApplication()
         },
-        title = "Sophon UI"
+        title = APP_NAME
     ) {
         App()
     }

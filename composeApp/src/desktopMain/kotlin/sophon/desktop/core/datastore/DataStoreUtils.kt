@@ -8,14 +8,12 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
-import sophon.desktop.core.PB_HOME
+import sophon.desktop.core.CACHE_HOME
+import sophon.desktop.feature.deeplink.data.source.DeepLinkHistoryModel
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 
-/**
- * 通用的 DataStore 序列化器实现类，使用 kotlinx-serialization-json
- */
 @OptIn(ExperimentalSerializationApi::class)
 class JsonSerializer<T>(
     override val defaultValue: T,
@@ -35,15 +33,23 @@ class JsonSerializer<T>(
 }
 
 /**
- * 创建 DataStore 的工厂扩展方法
+ * 全局唯一的 DataStore 提供者，通过 object 单例保证每个文件只有一个 DataStore 实例。
+ * 避免 ProGuard 混淆/优化后顶层 val 的 clinit 被多次触发导致重复创建。
  */
-inline fun <reified T> createDataStore(
-    fileName: String,
-    defaultValue: T,
-    serializer: kotlinx.serialization.KSerializer<T>
-): DataStore<T> {
-    return DataStoreFactory.create(
-        serializer = JsonSerializer(defaultValue, serializer),
-        produceFile = { File("$PB_HOME/$fileName") }
-    )
+object DataStoreProvider {
+
+    val deepLinkHistory: DataStore<DeepLinkHistoryModel> by lazy {
+        create("deepLink.pb", DeepLinkHistoryModel(), DeepLinkHistoryModel.serializer())
+    }
+
+    private fun <T> create(
+        fileName: String,
+        defaultValue: T,
+        serializer: kotlinx.serialization.KSerializer<T>
+    ): DataStore<T> {
+        return DataStoreFactory.create(
+            serializer = JsonSerializer(defaultValue, serializer),
+            produceFile = { File("$CACHE_HOME/$fileName") }
+        )
+    }
 }

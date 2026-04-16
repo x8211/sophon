@@ -164,7 +164,7 @@ class MyFeatureViewModel(
       ```
 - **注意事项**: 
     - 内部已指定 `Dispatchers.IO`，无需手动切换线程。
-    - 内部已处理 `adb` 命令的格式化 (`Context.formatIfAdbCmd`)。
+    - 内部已处理 `adb` 命令的格式化 (`Shell.formatIfAdbCmd`)，并通过 `ShellExecutor` 策略模式自动适配不同操作系统。
     - 避免直接使用 `ProcessBuilder` 或 `Runtime.getRuntime().exec()`，以保持代码统一与可维护性。
 
 ## 8. 其他规范 (Other Standards)

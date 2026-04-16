@@ -16,7 +16,7 @@ interface GrpcCaptureRepository {
     suspend fun getCapturedRecords(): List<GrpcCaptureModel>
 
     /**
-     * 通过 run-as 命令从设备拉取数据库到本地 PB_HOME 目录
+     * 通过 run-as 命令从设备拉取数据库到本地 CACHE_HOME 目录
      *
      * @param packageName 目标应用包名，用于 run-as 权限和数据库路径定位
      * @return 是否拉取成功
