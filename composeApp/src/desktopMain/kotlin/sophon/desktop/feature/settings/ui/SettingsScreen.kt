@@ -37,11 +37,6 @@ fun SettingsScreen() {
         )
 
         DefaultListItem(
-            title = "应用资源路径",
-            description = System.getProperty("compose.application.resources.dir")?:"Unknown",
-        )
-
-        DefaultListItem(
             title = "应用打包时间",
             description = AppInfo.BUILD_TIME,
         )
