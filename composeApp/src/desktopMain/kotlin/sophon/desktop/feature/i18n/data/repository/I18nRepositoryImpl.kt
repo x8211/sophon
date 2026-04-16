@@ -5,7 +5,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
-import sophon.desktop.core.APP_BUNDLE_PATH
 import sophon.desktop.core.Shell.simpleShell
 import sophon.desktop.feature.i18n.model.I18nConfig
 import sophon.desktop.feature.i18n.model.I18nModule
@@ -22,25 +21,24 @@ class I18nRepositoryImpl : I18nRepository {
         }
 
     override suspend fun findI18nToolPath(): String {
-        // Compose Desktop 打包后的资源目录属性
+        val i18nBinary = "i18n"
+
+        // 打包后 appResourcesRootDir 会将 macos/ 子目录的内容
+        // 合并到 compose.application.resources.dir 下（平台前缀被去掉）
         val resourcesDir = System.getProperty("compose.application.resources.dir")
         if (resourcesDir != null) {
-            // 打包模式：在资源目录下的 tools/i18n
-            val deployedI18N = File("$APP_BUNDLE_PATH/tools", "i18n")
-            if (deployedI18N.exists()) {
-                return deployedI18N.absolutePath
-            }
+            val deployedI18N = File(resourcesDir, "tools/$i18nBinary")
+            if (deployedI18N.exists()) return deployedI18N.absolutePath
         }
 
-        // Debug/开发模式：尝试多个可能的路径
+        // 开发模式回退路径
         val candidatePaths = listOf(
-            "composeApp/src/desktopMain/tools/i18n",
-            "src/desktopMain/tools/i18n",
-            "tools/i18n"
+            "composeApp/src/desktopMain/appResources/macos/tools/$i18nBinary",
+            "src/desktopMain/appResources/macos/tools/$i18nBinary",
         )
 
         return candidatePaths.firstOrNull { File(it).exists() }
-            ?: File("composeApp/src/desktopMain/tools/i18n").absolutePath
+            ?: File(candidatePaths.first()).absolutePath
     }
 
     override fun executeTranslation(config: I18nConfig): Flow<String> = flow {

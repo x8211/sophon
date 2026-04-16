@@ -16,10 +16,6 @@ plugins {
     alias(libs.plugins.serialization)
 }
 
-apply {
-    from(file(rootProject.layout.projectDirectory.dir("gradle/desktop/copy_distribution_tools.gradle.kts")))
-}
-
 val generateAppInfo by tasks.registering {
     val outputDir = layout.buildDirectory.dir("generated/appInfo/kotlin")
     val buildTimeStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
@@ -171,6 +167,13 @@ compose.desktop {
                 shortcut = true
                 // MSI/EXE 升级 UUID，固定后可无缝升级，请勿修改
                 upgradeUuid = "3B3E2B2A-1C4D-4E5F-8A9B-0C1D2E3F4A5B"
+            }
+
+            macOS {
+                // Dock/菜单栏显示名称
+                dockName = appName
+                // 设置图标
+                iconFile.set(layout.projectDirectory.dir("src/desktopMain/launcher/icon.icns").asFile)
             }
         }
     }
