@@ -1,6 +1,5 @@
 package sophon.desktop.feature.appmonitor.feature.gfx.data.repository
 
-import sophon.desktop.core.Shell.oneshotShell
 import sophon.desktop.core.Shell.simpleShell
 import sophon.desktop.feature.appmonitor.feature.gfx.model.DisplayData
 import sophon.desktop.feature.appmonitor.feature.gfx.model.GfxMetrics
@@ -144,13 +143,5 @@ class GfxRepositoryImpl : GfxRepository {
             p99Gpu = p99Gpu,
             jankReasons = jankReasonList
         )
-    }
-
-    /**
-     * 获取当前前台应用包名
-     */
-    private suspend fun getForegroundPackageName(): String {
-        return "adb shell dumpsys activity activities | grep '* Task{' | head -n 1"
-            .oneshotShell { "A=\\d+:(\\S+)".toRegex().find(it)?.groupValues?.getOrNull(1) ?: "" }
     }
 }
