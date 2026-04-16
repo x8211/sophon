@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Monitor
@@ -42,12 +41,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,16 +56,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import sophon.desktop.core.Context
-import sophon.desktop.core.datastore.DataStoreProvider
 import sophon.desktop.feature.adb.model.AdbState
 import sophon.desktop.feature.appmonitor.ui.AppMonitorScreen
 import sophon.desktop.feature.deeplink.ui.DeepLinkScreen
 import sophon.desktop.feature.developer.ui.DeveloperScreen
 import sophon.desktop.feature.device.ui.DeviceInfoScreen
-import sophon.desktop.feature.i18n.ui.I18NScreen
 import sophon.desktop.feature.installapk.ui.InstallApkScreen
 import sophon.desktop.feature.proxy.ui.ProxyScreen
 import sophon.desktop.feature.settings.ui.SettingsScreen
@@ -85,7 +78,6 @@ enum class AppScreen(val title: String) {
     Developer("开发者选项"),
     Deeplink("Deeplink"),
     InstallApk("安装Apk"),
-    I18N("多语言"),
     Settings("设置"),
 }
 
@@ -100,15 +92,7 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
     )
     var isExpanded by remember { mutableStateOf(true) }
     val state by Context.stream.collectAsState()
-    val scope = rememberCoroutineScope()
     var sortedItems by remember { mutableStateOf(AppScreen.entries.toList()) }
-
-    LaunchedEffect(Unit) {
-        val usage = DataStoreProvider.featureUsage.data.first()
-        val list = AppScreen.entries.toMutableList()
-        list.sortByDescending { usage.usages[it.name] ?: 0 }
-        sortedItems = list
-    }
 
     Row(Modifier.fillMaxSize()) {
         // Left Side: Function Entry
@@ -117,15 +101,7 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
             fixedHeader = AppScreen.Home,
             fixedFooter = AppScreen.Settings,
             currentScreen = currentScreen,
-            onNavigate = {
-                navController.navigate(it.name)
-                scope.launch {
-                    DataStoreProvider.featureUsage.updateData { current ->
-                        val newCount = (current.usages[it.name] ?: 0) + 1
-                        current.copy(usages = current.usages + (it.name to newCount))
-                    }
-                }
-            },
+            onNavigate = { navController.navigate(it.name) },
             isExpanded = isExpanded,
             onExpandChange = { isExpanded = it }
         )
@@ -165,7 +141,6 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
                     composable(route = AppScreen.Developer.name) { DeveloperScreen() }
                     composable(route = AppScreen.Deeplink.name) { DeepLinkScreen() }
                     composable(route = AppScreen.InstallApk.name) { InstallApkScreen() }
-                    composable(route = AppScreen.I18N.name) { I18NScreen() }
                     composable(route = AppScreen.Settings.name) { SettingsScreen() }
                 }
             }
@@ -321,7 +296,6 @@ private fun getIconForTitle(title: String): ImageVector {
     return when (title) {
         AppScreen.Home.title -> Icons.Default.Home
         AppScreen.InstallApk.title -> Icons.Default.Android
-        AppScreen.I18N.title -> Icons.Default.Language
         AppScreen.Deeplink.title -> Icons.Default.Link
         AppScreen.Proxy.title -> Icons.Default.Build
         AppScreen.AppMonitor.title -> Icons.Default.Dashboard

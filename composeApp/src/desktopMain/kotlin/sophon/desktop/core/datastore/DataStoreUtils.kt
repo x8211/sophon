@@ -9,10 +9,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
 import sophon.desktop.core.CACHE_HOME
-import sophon.desktop.core.usage.FeatureUsageModel
 import sophon.desktop.feature.deeplink.data.source.DeepLinkHistoryModel
-import sophon.desktop.feature.i18n.data.source.I18nToolConfig
-import sophon.desktop.feature.i18n.model.I18nProject
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -41,20 +38,8 @@ class JsonSerializer<T>(
  */
 object DataStoreProvider {
 
-    val featureUsage: DataStore<FeatureUsageModel> by lazy {
-        create("featureUsage.pb", FeatureUsageModel(), FeatureUsageModel.serializer())
-    }
-
     val deepLinkHistory: DataStore<DeepLinkHistoryModel> by lazy {
         create("deepLink.pb", DeepLinkHistoryModel(), DeepLinkHistoryModel.serializer())
-    }
-
-    val i18nTool: DataStore<I18nToolConfig> by lazy {
-        create("i18n.pb", I18nToolConfig(), I18nToolConfig.serializer())
-    }
-
-    val i18nProject: DataStore<I18nProject> by lazy {
-        create("project.pb", I18nProject(), I18nProject.serializer())
     }
 
     private fun <T> create(
