@@ -72,12 +72,13 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.materialIconsExtended)
             implementation(libs.compose.components.resources)
-            implementation(projects.shared)
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(libs.sqlite.jdbc)
+            implementation(libs.netty.all)
+            implementation(libs.bouncycastle)
         }
         desktopTest.dependencies {
             implementation(kotlin("test"))
@@ -170,7 +171,7 @@ compose.desktop {
             }
 
             macOS {
-                // Dock/菜单栏显示名称
+                bundleID = "sophon.desktop"
                 dockName = appName
                 // 设置图标
                 iconFile.set(layout.projectDirectory.dir("src/desktopMain/launcher/icon.icns").asFile)

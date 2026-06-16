@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import org.jetbrains.compose.resources.painterResource
 import sophon.composeapp.generated.resources.Res
 import sophon.composeapp.generated.resources.compose_multiplatform
-import sophon.shared.Greeting
 
 @Composable
 fun App() {
@@ -37,13 +36,11 @@ fun App() {
                 Text("Click me!")
             }
             AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
                 }
             }
         }

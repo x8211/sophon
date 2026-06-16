@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Monitor
+import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -63,6 +64,7 @@ import sophon.desktop.feature.deeplink.ui.DeepLinkScreen
 import sophon.desktop.feature.developer.ui.DeveloperScreen
 import sophon.desktop.feature.device.ui.DeviceInfoScreen
 import sophon.desktop.feature.installapk.ui.InstallApkScreen
+import sophon.desktop.feature.packetcapture.ui.PacketCaptureScreen
 import sophon.desktop.feature.proxy.ui.ProxyScreen
 import sophon.desktop.feature.settings.ui.SettingsScreen
 import sophon.desktop.feature.systemmonitor.ui.SystemMonitorScreen
@@ -74,6 +76,7 @@ enum class AppScreen(val title: String) {
     Home("首页"),
     AppMonitor("应用监控"),
     SystemMonitor("系统监控"),
+    PacketCapture("抓包"),
     Proxy("设置代理"),
     Developer("开发者选项"),
     Deeplink("Deeplink"),
@@ -137,6 +140,7 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
                     composable(route = AppScreen.Home.name) { DeviceInfoScreen() }
                     composable(route = AppScreen.AppMonitor.name) { AppMonitorScreen() }
                     composable(route = AppScreen.SystemMonitor.name) { SystemMonitorScreen() }
+                    composable(route = AppScreen.PacketCapture.name) { PacketCaptureScreen() }
                     composable(route = AppScreen.Proxy.name) { ProxyScreen() }
                     composable(route = AppScreen.Developer.name) { DeveloperScreen() }
                     composable(route = AppScreen.Deeplink.name) { DeepLinkScreen() }
@@ -302,6 +306,7 @@ private fun getIconForTitle(title: String): ImageVector {
         AppScreen.SystemMonitor.title -> Icons.Default.Monitor
         AppScreen.Settings.title -> Icons.Default.Settings
         AppScreen.Developer.title -> Icons.Default.DeveloperMode
+        AppScreen.PacketCapture.title -> Icons.Default.NetworkCheck
         else -> Icons.Default.Extension
     }
 }

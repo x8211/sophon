@@ -5,7 +5,7 @@
 遵循 **Feature-based**（按功能分包）的策略，同时严格参考 **Android 官方架构指南 (Modern App Architecture)** 与 **NowInAndroid (NiA)** 的架构演进，围绕不同关注点将应用划分为不同层级。
 
 ```text
-desktopMain/kotlin/sophon/desktop/
+composeApp/src/desktopMain/kotlin/sophon/desktop/
 ├── feature/                # 业务功能模块，按功能垂直切分
 │   ├── [feature_name]/     # 每个功能模块内部按官方架构分层
 │   │   ├── model/          # 业务模型 (App Model/Domain Model)
@@ -70,7 +70,7 @@ desktopMain/kotlin/sophon/desktop/
 - **组件规范 (Component Standards)**:
     - **通用组件**: 放置在 `ui/components`，如 `ToolBar`, `NavigationSideBar`。
     - **侧边栏**: 使用 `NavigationSideBar` 作为主导航，支持展开/收起动画。
-    - **滚动条**: 桌面端长列表必须添加垂直滚动条 (见 `feature/device/ScrollbarModifier.kt`)。
+    - **滚动条**: 桌面端长列表必须添加垂直滚动条 (见 `feature/device/ui/ScrollbarModifier.kt`)。
 
 - **桌面端适配 (Desktop Adaptation)**:
     - **鼠标**: 为可交互元素添加 `Modifier.pointerHoverIcon` 或悬停背景色。
@@ -170,3 +170,13 @@ class MyFeatureViewModel(
 ## 8. 其他规范 (Other Standards)
 
 - **禁止过时方法**:不要使用过时 (Deprecated) 的方法，应立即更换为系统或 IDE 建议的新方法 (ReplaceWith)。
+
+---
+
+## 9. 功能模块架构文档索引 (Feature Architecture Docs)
+
+各功能模块如含复杂实现（如网络协议、多组件协作、特殊生命周期管理），须在其目录下维护 `ARCHITECTURE.md`，记录分层结构、核心流程与设计约束。
+
+| 功能模块 | 架构文档 | 核心能力摘要 |
+|---|---|---|
+| packetcapture | [ARCHITECTURE.md](../composeApp/src/desktopMain/kotlin/sophon/desktop/feature/packetcapture/ARCHITECTURE.md) | 基于 Netty MITM 代理的 HTTP/HTTPS 流量抓包；BouncyCastle 动态签发叶子证书；callbackFlow 桥接 Netty 回调与协程 |

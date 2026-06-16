@@ -96,8 +96,8 @@
 # 保留所有实现 Parcelable 的类（若有）
 -keep class * implements android.os.Parcelable { *; }
 
-# 不混淆主入口类（compose desktop 需要）
--keep class sophon.desktop.MainKt { *; }
+# 不混淆 SQLite 相关类
+-keep class org.sqlite.** { *; }
 
 # 不打印任何警告（第三方库可能有残留引用）
 -dontwarn **
@@ -117,6 +117,4 @@
 #     public void println(java.lang.String);
 #     public void println(java.lang.Object);
 # }
-
--keep class org.sqlite.** { *; }
 

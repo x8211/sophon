@@ -14,6 +14,8 @@ junitPlatformRunner = "1.13.4"
 serialization = "2.2.0"
 serialization-json = "1.9.0"
 sqlite-jdbc = "3.49.1.0"
+netty = "4.1.121.Final"
+bouncycastle = "1.80"
 
 
 
@@ -29,6 +31,8 @@ junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", vers
 junit-platform-runner = { module = "org.junit.platform:junit-platform-runner", version.ref = "junitPlatformRunner" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose-multiplatform" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
+netty-all = { module = "io.netty:netty-all", version.ref = "netty" }
+bouncycastle = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
