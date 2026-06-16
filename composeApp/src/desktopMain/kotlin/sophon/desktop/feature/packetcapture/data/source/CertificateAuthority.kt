@@ -1,5 +1,7 @@
 package sophon.desktop.feature.packetcapture.data.source
 
+import io.netty.handler.ssl.ApplicationProtocolConfig
+import io.netty.handler.ssl.ApplicationProtocolNames
 import io.netty.handler.ssl.SslContext
 import io.netty.handler.ssl.SslContextBuilder
 import org.bouncycastle.asn1.x500.X500Name
@@ -84,7 +86,17 @@ object CertificateAuthority {
             .setProvider("BC")
             .getCertificate(certBuilder.build(signer))
 
-        return SslContextBuilder.forServer(leafKeyPair.private, leafCert, caCert).build()
+        return SslContextBuilder.forServer(leafKeyPair.private, leafCert, caCert)
+            .applicationProtocolConfig(
+                ApplicationProtocolConfig(
+                    ApplicationProtocolConfig.Protocol.ALPN,
+                    ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
+                    ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
+                    ApplicationProtocolNames.HTTP_2,
+                    ApplicationProtocolNames.HTTP_1_1
+                )
+            )
+            .build()
     }
 
     private fun loadExistingCA(): Pair<X509Certificate, PrivateKey> {

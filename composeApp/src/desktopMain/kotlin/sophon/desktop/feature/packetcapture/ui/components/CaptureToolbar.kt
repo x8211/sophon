@@ -7,44 +7,37 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import sophon.desktop.feature.packetcapture.model.CaptureStatus
 
 /**
- * 抓包工具栏，提供开始/停止、清空列表、关键词过滤及 CA 证书安装的操作入口，
+ * 抓包工具栏，提供开始/停止、清空列表及 CA 证书安装的操作入口，
  * 并展示当前设备代理地址，按钮颜色随 [CaptureStatus] 联动变化。
+ * 过滤框已下移至左侧树形面板底部（Charles 风格）。
  */
 @Composable
 fun CaptureToolbar(
     status: CaptureStatus,
-    filterText: String,
     deviceProxy: String,
     onStart: () -> Unit,
     onStop: () -> Unit,
     onClear: () -> Unit,
-    onFilterChange: (String) -> Unit,
     onInstallCa: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -92,27 +85,7 @@ fun CaptureToolbar(
                 )
             }
 
-            OutlinedTextField(
-                value = filterText,
-                onValueChange = onFilterChange,
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("过滤 host / path / 状态码...", style = MaterialTheme.typography.bodySmall) },
-                leadingIcon = { Icon(Icons.Default.Search, null, modifier = Modifier.size(18.dp)) },
-                trailingIcon = {
-                    if (filterText.isNotEmpty()) {
-                        IconButton(onClick = { onFilterChange("") }) {
-                            Icon(Icons.Default.Clear, null, modifier = Modifier.size(16.dp))
-                        }
-                    }
-                },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodySmall,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                ),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
-            )
+            Spacer(Modifier.weight(1f))
 
             if (deviceProxy.isNotBlank()) {
                 Text(

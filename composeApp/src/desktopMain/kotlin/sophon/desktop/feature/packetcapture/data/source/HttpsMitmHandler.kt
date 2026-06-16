@@ -10,7 +10,11 @@ import sophon.desktop.feature.packetcapture.model.CapturedPacket
 import java.util.ArrayDeque
 import java.util.concurrent.atomic.AtomicLong
 
-/** HTTPS MITM 会话中尚未收到响应的请求快照，用于响应到达时还原完整的请求上下文。 */
+/**
+ * HTTPS MITM 会话中尚未收到响应的请求快照，用于响应到达时还原完整的请求上下文。
+ * [isGrpc] 标记该请求是否已被识别为 gRPC，由 [HttpsMitmHandler] 在入队时赋值，
+ * 供 [BackendResponseHandler] 组装 [CapturedPacket] 时透传。
+ */
 internal data class PendingRequest(
     val id: Long,
     val timestamp: Long,
@@ -18,7 +22,8 @@ internal data class PendingRequest(
     val method: String,
     val path: String,
     val requestHeaders: Map<String, String>,
-    val requestBody: ByteArray?
+    val requestBody: ByteArray?,
+    val isGrpc: Boolean = false
 )
 
 /**
@@ -49,7 +54,8 @@ internal class HttpsMitmHandler(
             PendingRequest(
                 id = id, timestamp = timestamp, startNano = startNano,
                 method = req.method().name(), path = req.uri(),
-                requestHeaders = requestHeaders, requestBody = requestBodyBytes
+                requestHeaders = requestHeaders, requestBody = requestBodyBytes,
+                isGrpc = GrpcDetector.isGrpc(requestHeaders)
             )
         )
 
@@ -70,14 +76,22 @@ internal class HttpsMitmHandler(
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
         while (pendingRequests.isNotEmpty()) {
             val pending = pendingRequests.pollFirst() ?: break
-            onPacketCaptured(
-                CapturedPacket(
+            val packet = if (pending.isGrpc) {
+                CapturedPacket.Grpc(
                     id = pending.id, timestamp = pending.timestamp,
                     method = pending.method, scheme = "https", host = host, path = pending.path,
                     requestHeaders = pending.requestHeaders, requestBody = pending.requestBody,
                     error = cause.message
                 )
-            )
+            } else {
+                CapturedPacket.Http(
+                    id = pending.id, timestamp = pending.timestamp,
+                    method = pending.method, scheme = "https", host = host, path = pending.path,
+                    requestHeaders = pending.requestHeaders, requestBody = pending.requestBody,
+                    error = cause.message
+                )
+            }
+            onPacketCaptured(packet)
         }
         ctx.close()
         backendChannel.close()

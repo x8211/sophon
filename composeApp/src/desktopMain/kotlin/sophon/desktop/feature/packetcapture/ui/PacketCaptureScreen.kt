@@ -20,12 +20,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import sophon.desktop.feature.packetcapture.ui.components.CaptureToolbar
 import sophon.desktop.feature.packetcapture.ui.components.EmptyDetailPanel
+import sophon.desktop.feature.packetcapture.ui.components.HostTreePanel
 import sophon.desktop.feature.packetcapture.ui.components.PacketDetailPanel
-import sophon.desktop.feature.packetcapture.ui.components.PacketListPanel
 
 /**
- * 抓包功能主屏幕，组合工具栏、请求列表与详情面板的整体布局，
- * 并托管错误提示对话框与 CA 证书安装引导对话框。
+ * 抓包功能主屏幕，Charles Proxy 风格布局：
+ * - 顶部工具栏（开始/停止/清空/CA 安装/设备代理）
+ * - 左侧 Host 树形面板（260dp，可折叠分组 + 底部过滤框）
+ * - 右侧请求详情面板（URL 摘要行 + 概览/内容 两级标签）
  */
 @Composable
 fun PacketCaptureScreen(
@@ -35,13 +37,11 @@ fun PacketCaptureScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         CaptureToolbar(
-        status = state.status,
-        filterText = state.filterText,
+            status = state.status,
             deviceProxy = state.deviceProxy,
             onStart = { viewModel.startCapture() },
             onStop = { viewModel.stopCapture() },
             onClear = { viewModel.clearPackets() },
-            onFilterChange = { viewModel.updateFilter(it) },
             onInstallCa = { viewModel.installCaToDevice() },
             modifier = Modifier.fillMaxWidth()
         )
@@ -49,12 +49,16 @@ fun PacketCaptureScreen(
         HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            PacketListPanel(
-                packets = state.filteredPackets,
+            HostTreePanel(
+                groupedPackets = state.groupedPackets,
+                expandedHosts = state.expandedHosts,
                 selectedPacketId = state.selectedPacketId,
+                filterText = state.filterText,
+                onToggleHost = { viewModel.toggleHostExpanded(it) },
                 onSelectPacket = { viewModel.selectPacket(it) },
+                onFilterChange = { viewModel.updateFilter(it) },
                 modifier = Modifier
-                    .width(360.dp)
+                    .width(260.dp)
                     .fillMaxHeight()
             )
 

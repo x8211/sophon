@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
 
+private val grpcColor = Color(0xFF7B1FA2)
+
 private val methodColors = mapOf(
     "GET" to Color(0xFF2196F3),
     "POST" to Color(0xFF4CAF50),
@@ -109,16 +111,29 @@ private fun PacketListItem(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = packet.method,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 10.sp
-            ),
-            color = methodColors[packet.method] ?: Color(0xFF607D8B),
-            modifier = Modifier.width(44.dp)
-        )
+        if (packet is CapturedPacket.Grpc) {
+            Text(
+                text = "gRPC",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp
+                ),
+                color = grpcColor,
+                modifier = Modifier.width(44.dp)
+            )
+        } else {
+            Text(
+                text = packet.method,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp
+                ),
+                color = methodColors[packet.method] ?: Color(0xFF607D8B),
+                modifier = Modifier.width(44.dp)
+            )
+        }
 
         Spacer(Modifier.width(6.dp))
 
@@ -130,16 +145,31 @@ private fun PacketListItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = packet.path,
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp
-                ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            if (packet is CapturedPacket.Grpc) {
+                val label = listOfNotNull(packet.service, packet.rpcMethod).joinToString("/")
+                Text(
+                    text = label.ifEmpty { packet.path },
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = grpcColor.copy(alpha = 0.8f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            } else {
+                Text(
+                    text = packet.path,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 10.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
 
         Spacer(Modifier.width(8.dp))

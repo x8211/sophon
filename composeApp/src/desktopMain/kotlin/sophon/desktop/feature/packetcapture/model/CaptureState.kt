@@ -15,7 +15,8 @@ data class CaptureState(
     val selectedPacketId: Long? = null,
     val filterText: String = "",
     val errorMessage: String? = null,
-    val showCaInstallGuide: Boolean = false
+    val showCaInstallGuide: Boolean = false,
+    val expandedHosts: Set<String> = emptySet()
 ) {
     val isRunning: Boolean get() = status == CaptureStatus.RUNNING
 
@@ -27,6 +28,10 @@ data class CaptureState(
                     it.method.contains(filterText, ignoreCase = true) ||
                     it.statusCode?.toString()?.contains(filterText) == true
         }
+
+    /** 按 host 分组（基于 filteredPackets，保留各 host 内的到达时序）。 */
+    val groupedPackets: Map<String, List<CapturedPacket>>
+        get() = filteredPackets.groupBy { it.host }
 
     val selectedPacket: CapturedPacket?
         get() = selectedPacketId?.let { id -> packets.find { it.id == id } }

@@ -55,7 +55,14 @@ class PacketCaptureViewModel(
         captureJob = viewModelScope.launch(Dispatchers.IO) {
             repository.startCapture(state.port).collect { packet ->
                 _uiState.update { current ->
-                    current.copy(packets = current.packets + packet)
+                    val newExpanded = if (packet.host !in current.expandedHosts)
+                        current.expandedHosts + packet.host
+                    else
+                        current.expandedHosts
+                    current.copy(
+                        packets = current.packets + packet,
+                        expandedHosts = newExpanded
+                    )
                 }
             }
         }.also { job ->
@@ -81,7 +88,14 @@ class PacketCaptureViewModel(
     }
 
     fun clearPackets() {
-        _uiState.update { it.copy(packets = emptyList(), selectedPacketId = null) }
+        _uiState.update { it.copy(packets = emptyList(), selectedPacketId = null, expandedHosts = emptySet()) }
+    }
+
+    fun toggleHostExpanded(host: String) {
+        _uiState.update { s ->
+            val hosts = if (host in s.expandedHosts) s.expandedHosts - host else s.expandedHosts + host
+            s.copy(expandedHosts = hosts)
+        }
     }
 
     fun selectPacket(packet: CapturedPacket?) {

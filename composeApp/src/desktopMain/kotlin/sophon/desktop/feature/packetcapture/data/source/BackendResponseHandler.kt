@@ -30,8 +30,8 @@ internal class BackendResponseHandler(
             else null
         }
 
-        onPacketCaptured(
-            CapturedPacket(
+        val packet = if (pending.isGrpc) {
+            CapturedPacket.Grpc(
                 id = pending.id, timestamp = pending.timestamp,
                 method = pending.method, scheme = "https", host = host, path = pending.path,
                 requestHeaders = pending.requestHeaders, requestBody = pending.requestBody,
@@ -39,7 +39,17 @@ internal class BackendResponseHandler(
                 responseHeaders = responseHeaders, responseBody = responseBodyBytes,
                 durationMs = duration
             )
-        )
+        } else {
+            CapturedPacket.Http(
+                id = pending.id, timestamp = pending.timestamp,
+                method = pending.method, scheme = "https", host = host, path = pending.path,
+                requestHeaders = pending.requestHeaders, requestBody = pending.requestBody,
+                statusCode = resp.status().code(),
+                responseHeaders = responseHeaders, responseBody = responseBodyBytes,
+                durationMs = duration
+            )
+        }
+        onPacketCaptured(packet)
 
         frontendChannel.writeAndFlush(resp.retain())
     }
@@ -51,14 +61,22 @@ internal class BackendResponseHandler(
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
         while (pendingRequests.isNotEmpty()) {
             val pending = pendingRequests.pollFirst() ?: break
-            onPacketCaptured(
-                CapturedPacket(
+            val packet = if (pending.isGrpc) {
+                CapturedPacket.Grpc(
                     id = pending.id, timestamp = pending.timestamp,
                     method = pending.method, scheme = "https", host = host, path = pending.path,
                     requestHeaders = pending.requestHeaders, requestBody = pending.requestBody,
                     error = cause.message
                 )
-            )
+            } else {
+                CapturedPacket.Http(
+                    id = pending.id, timestamp = pending.timestamp,
+                    method = pending.method, scheme = "https", host = host, path = pending.path,
+                    requestHeaders = pending.requestHeaders, requestBody = pending.requestBody,
+                    error = cause.message
+                )
+            }
+            onPacketCaptured(packet)
         }
         ctx.close()
         frontendChannel.close()
