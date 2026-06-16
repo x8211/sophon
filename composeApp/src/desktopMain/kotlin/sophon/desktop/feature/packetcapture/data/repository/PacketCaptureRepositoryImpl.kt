@@ -10,6 +10,10 @@ import sophon.desktop.feature.packetcapture.model.CapturedPacket
 import sophon.desktop.feature.proxy.data.repository.ProxyRepository
 import sophon.desktop.feature.proxy.data.repository.ProxyRepositoryImpl
 
+/**
+ * [PacketCaptureRepository] 的具体实现，负责 [MitmProxyServer] 的生命周期管理，
+ * 并通过 [callbackFlow] 将 Netty 的抓包回调桥接为 Kotlin 协程 Flow。
+ */
 class PacketCaptureRepositoryImpl(
     private val proxyRepository: ProxyRepository = ProxyRepositoryImpl()
 ) : PacketCaptureRepository {

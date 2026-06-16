@@ -23,6 +23,10 @@ import sophon.desktop.feature.packetcapture.ui.components.EmptyDetailPanel
 import sophon.desktop.feature.packetcapture.ui.components.PacketDetailPanel
 import sophon.desktop.feature.packetcapture.ui.components.PacketListPanel
 
+/**
+ * 抓包功能主屏幕，组合工具栏、请求列表与详情面板的整体布局，
+ * 并托管错误提示对话框与 CA 证书安装引导对话框。
+ */
 @Composable
 fun PacketCaptureScreen(
     viewModel: PacketCaptureViewModel = viewModel { PacketCaptureViewModel() }

@@ -32,6 +32,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import sophon.desktop.feature.packetcapture.model.CaptureStatus
 
+/**
+ * 抓包工具栏，提供开始/停止、清空列表、关键词过滤及 CA 证书安装的操作入口，
+ * 并展示当前设备代理地址，按钮颜色随 [CaptureStatus] 联动变化。
+ */
 @Composable
 fun CaptureToolbar(
     status: CaptureStatus,

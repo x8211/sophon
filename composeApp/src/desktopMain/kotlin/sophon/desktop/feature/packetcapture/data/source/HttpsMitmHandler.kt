@@ -10,6 +10,7 @@ import sophon.desktop.feature.packetcapture.model.CapturedPacket
 import java.util.ArrayDeque
 import java.util.concurrent.atomic.AtomicLong
 
+/** HTTPS MITM 会话中尚未收到响应的请求快照，用于响应到达时还原完整的请求上下文。 */
 internal data class PendingRequest(
     val id: Long,
     val timestamp: Long,
@@ -20,6 +21,10 @@ internal data class PendingRequest(
     val requestBody: ByteArray?
 )
 
+/**
+ * HTTPS MITM 管道中的请求侧处理器，拦截来自客户端的解密后 HTTP 请求，
+ * 将请求元数据压入 [pendingRequests] 队列后转发至后端，维持请求的 FIFO 顺序。
+ */
 internal class HttpsMitmHandler(
     private val host: String,
     private val backendChannel: Channel,

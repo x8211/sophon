@@ -13,6 +13,11 @@ import java.util.concurrent.atomic.AtomicLong
 
 private const val MAX_CONTENT_LENGTH = 10 * 1024 * 1024
 
+/**
+ * 基于 Netty 的本地 MITM 代理服务器，封装 NIO 事件循环组的启动与停止。
+ * 每个进入连接的处理委托给 [ProxyFrontendHandler]，捕获到的数据包通过 [onPacketCaptured] 回调上报。
+ * 请求体大小上限为 10 MB。
+ */
 class MitmProxyServer(private val onPacketCaptured: (CapturedPacket) -> Unit) {
 
     private var bossGroup: NioEventLoopGroup? = null

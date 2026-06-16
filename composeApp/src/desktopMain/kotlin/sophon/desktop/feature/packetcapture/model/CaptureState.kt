@@ -1,7 +1,12 @@
 package sophon.desktop.feature.packetcapture.model
 
+/** 抓包服务的运行状态：未启动、运行中或发生错误。 */
 enum class CaptureStatus { STOPPED, RUNNING, ERROR }
 
+/**
+ * 抓包功能的 UI 状态聚合，作为界面层的单一数据源。
+ * [filteredPackets] 和 [selectedPacket] 为基于 [packets]、[filterText]、[selectedPacketId] 实时计算的派生属性。
+ */
 data class CaptureState(
     val status: CaptureStatus = CaptureStatus.STOPPED,
     val port: Int = 8888,

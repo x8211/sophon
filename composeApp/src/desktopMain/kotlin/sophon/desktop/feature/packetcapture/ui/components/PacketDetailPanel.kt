@@ -44,6 +44,10 @@ private fun formatJsonOrRaw(text: String?): String {
 private fun isJson(contentType: String?): Boolean =
     contentType?.contains("json", ignoreCase = true) == true
 
+/**
+ * 请求详情面板，以标签页形式分区展示选中数据包的概览、请求头/体及响应头/体。
+ * JSON 格式的 Body 自动美化显示，支持横向与纵向双向滚动。
+ */
 @Composable
 fun PacketDetailPanel(
     packet: CapturedPacket,

@@ -27,6 +27,10 @@ import java.security.cert.X509Certificate
 import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * CA 证书管理单例，负责根证书的持久化（{CACHE_HOME}/ca/）及按主机名动态签发叶子证书。
+ * 首次启动时自动生成 10 年有效期的根证书；叶子证书签发后缓存至内存，避免重复生成。
+ */
 object CertificateAuthority {
 
     private val caDir = File(CACHE_HOME, "ca").also { it.mkdirs() }

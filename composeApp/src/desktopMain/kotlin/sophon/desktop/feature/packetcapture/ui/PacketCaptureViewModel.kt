@@ -15,6 +15,11 @@ import sophon.desktop.feature.packetcapture.model.CaptureState
 import sophon.desktop.feature.packetcapture.model.CaptureStatus
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
 
+/**
+ * 抓包功能的状态容器，持有 [CaptureState] 并将用户操作转发至 Repository 层。
+ * 通过 [viewModelScope] 管理抓包协程生命周期，并监听设备切换事件刷新代理信息。
+ * 生命周期结束时自动停止代理服务器。
+ */
 class PacketCaptureViewModel(
     private val repository: PacketCaptureRepository = PacketCaptureRepositoryImpl()
 ) : ViewModel() {

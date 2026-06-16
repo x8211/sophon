@@ -7,6 +7,11 @@ import io.netty.handler.codec.http.FullHttpResponse
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
 import java.util.ArrayDeque
 
+/**
+ * HTTPS MITM 管道中的响应侧处理器，接收真实服务器的 HTTP 响应，
+ * 从 [pendingRequests] 队列头部弹出对应请求，组装完整的 [CapturedPacket] 后触发回调，
+ * 并将响应原样转发回客户端。
+ */
 internal class BackendResponseHandler(
     private val frontendChannel: Channel,
     private val pendingRequests: ArrayDeque<PendingRequest>,

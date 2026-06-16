@@ -1,5 +1,10 @@
 package sophon.desktop.feature.packetcapture.model
 
+/**
+ * 单条抓包记录的不可变数据模型，包含请求与响应的完整信息。
+ * 以 [id] 为唯一标识；[isComplete] 表示响应已接收或发生错误；
+ * [url]、[statusText] 等为基于字段派生的计算属性。
+ */
 data class CapturedPacket(
     val id: Long,
     val timestamp: Long,

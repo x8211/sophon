@@ -32,6 +32,11 @@ import java.util.concurrent.atomic.AtomicLong
 
 private const val MAX_CONTENT_LENGTH = 10 * 1024 * 1024
 
+/**
+ * Netty 前端入站处理器，按协议分流客户端请求：
+ * - 普通 HTTP 请求：直接连接后端并捕获完整的请求/响应数据。
+ * - HTTPS CONNECT 请求：与后端完成双向 TLS 握手，动态注入伪造叶子证书，建立 MITM 管道。
+ */
 class ProxyFrontendHandler(
     private val onPacketCaptured: (CapturedPacket) -> Unit,
     private val idCounter: AtomicLong

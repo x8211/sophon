@@ -48,6 +48,10 @@ private fun statusColor(statusCode: Int?): Color = when {
     else -> Color(0xFF9C27B0)
 }
 
+/**
+ * 抓包请求列表面板，以虚拟滚动方式展示已捕获的数据包。
+ * 新数据到达时自动滚动至末尾；HTTP Method 与状态码以语义颜色区分。
+ */
 @Composable
 fun PacketListPanel(
     packets: List<CapturedPacket>,
