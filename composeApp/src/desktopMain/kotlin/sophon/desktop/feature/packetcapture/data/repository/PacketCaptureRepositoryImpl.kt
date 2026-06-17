@@ -7,6 +7,7 @@ import sophon.desktop.core.Shell.simpleShell
 import sophon.desktop.feature.packetcapture.data.source.CertificateAuthority
 import sophon.desktop.feature.packetcapture.data.source.MitmProxyServer
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
+import sophon.desktop.feature.packetcapture.model.ThrottleConfig
 import sophon.desktop.feature.proxy.data.repository.ProxyRepository
 import sophon.desktop.feature.proxy.data.repository.ProxyRepositoryImpl
 
@@ -19,6 +20,7 @@ class PacketCaptureRepositoryImpl(
 ) : PacketCaptureRepository {
 
     private var proxyServer: MitmProxyServer? = null
+    private var pendingThrottleConfig: ThrottleConfig = ThrottleConfig()
 
     override fun startCapture(port: Int): Flow<CapturedPacket> = callbackFlow {
         val server = MitmProxyServer { packet ->
@@ -31,6 +33,8 @@ class PacketCaptureRepositoryImpl(
             close(result.exceptionOrNull() ?: Exception("代理服务器启动失败"))
             return@callbackFlow
         }
+
+        server.updateThrottle(pendingThrottleConfig)
 
         awaitClose {
             server.stop()
@@ -51,4 +55,9 @@ class PacketCaptureRepositoryImpl(
     }
 
     override fun getCaCertPath(): String = CertificateAuthority.getCaCertFile().absolutePath
+
+    override fun updateThrottle(config: ThrottleConfig) {
+        pendingThrottleConfig = config
+        proxyServer?.updateThrottle(config)
+    }
 }

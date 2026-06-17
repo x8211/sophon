@@ -24,7 +24,11 @@ data class CaptureState(
     /** 已成功加载的 Schema 消息描述符数量；-1 表示尚未加载。 */
     val schemaLoadedCount: Int = -1,
     /** Schema 加载出错时的错误信息。 */
-    val schemaLoadError: String? = null
+    val schemaLoadError: String? = null,
+    /** 当前限速配置；[ThrottleConfig.isActive] 为 false 时表示不限速。 */
+    val throttleConfig: ThrottleConfig = ThrottleConfig(),
+    /** 是否显示限速配置对话框。 */
+    val showThrottleDialog: Boolean = false,
 ) {
     val isRunning: Boolean get() = status == CaptureStatus.RUNNING
 

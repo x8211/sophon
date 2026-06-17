@@ -45,11 +45,15 @@ private const val MAX_CONTENT_LENGTH = 10 * 1024 * 1024
  *
  * TLS 握手流程原有的四层回调嵌套，通过 [awaitChannel]/[awaitHandshake]/[awaitWrite]
  * 桥接为顺序 suspend 代码，由注入的 [scope] 调度执行。
+ *
+ * 限速 handler 在 MITM 管道安装完成后（TLS 握手结束后）插入，作用于解密后的明文流，
+ * 避免在握手阶段延迟原始字节导致协议错误。
  */
 class ProxyFrontendHandler(
     private val scope: CoroutineScope,
     private val onPacketCaptured: (CapturedPacket) -> Unit,
-    private val idCounter: AtomicLong
+    private val idCounter: AtomicLong,
+    private val proxyServer: MitmProxyServer,
 ) : SimpleChannelInboundHandler<FullHttpRequest>() {
 
     override fun channelRead0(ctx: ChannelHandlerContext, msg: FullHttpRequest) {
@@ -130,7 +134,9 @@ class ProxyFrontendHandler(
         // 协程化后若从 IO 线程逐条提交，EventLoop 会在任务间处理其他事件（如客户端 RST），
         // 导致前端管道空窗期出现 "Connection reset" 穿透到 tail 的警告。
         // 将所有操作放入 awaitWrite.onSuccess（EventLoop 线程）可恢复原子语义，消除空窗期。
-        val frontendSsl = CertificateAuthority.getSslContextFor(tunnel.host).newHandler(ctx.channel().alloc())
+        val frontendSsl = CertificateAuthority
+            .getSslContextFor(tunnel.host, supportH2 = backendProto == ApplicationProtocolNames.HTTP_2)
+            .newHandler(ctx.channel().alloc())
         val frontendErrCatcher = object : ChannelInboundHandlerAdapter() {
             override fun exceptionCaught(ctx2: ChannelHandlerContext, cause: Throwable) {
                 backendChannel.close(); ctx2.close()
@@ -174,6 +180,11 @@ class ProxyFrontendHandler(
                         Http2MitmSession(tunnel.host, ctx.channel(), backendManager, onPacketCaptured, idCounter).install()
                     }
                 }
+                // TLS 握手完成、MITM 管道已就绪后，将限速 handler 插入 frontendSsl 之后。
+                // 此时作用于已解密的明文流，完全规避握手阶段数据延迟导致的协议错误。
+                proxyServer.currentTrafficShapingHandler?.let { trafficHandler ->
+                    ctx.pipeline().addAfter("frontendSsl", "trafficShaping", trafficHandler)
+                }
             }
         }.getOrElse { backendChannel.close(); return }
     }
@@ -188,6 +199,14 @@ class ProxyFrontendHandler(
         request: InboundRequest.PlainHttp
     ) {
         if (request.host.isEmpty()) { ctx.close(); return }
+
+        // plain HTTP 无 TLS，握手完成即为此刻，直接插入限速 handler。
+        // 若已存在则跳过（同一连接上多次请求复用场景）。
+        proxyServer.currentTrafficShapingHandler?.let { trafficHandler ->
+            if (ctx.pipeline().get("trafficShaping") == null) {
+                ctx.pipeline().addFirst("trafficShaping", trafficHandler)
+            }
+        }
 
         val id = idCounter.incrementAndGet()
         val timestamp = System.currentTimeMillis()

@@ -23,6 +23,7 @@ import sophon.desktop.feature.packetcapture.ui.components.EmptyDetailPanel
 import sophon.desktop.feature.packetcapture.ui.components.HostTreePanel
 import sophon.desktop.feature.packetcapture.ui.components.PacketDetailPanel
 import sophon.desktop.feature.packetcapture.ui.components.ProtoSchemaDialog
+import sophon.desktop.feature.packetcapture.ui.components.ThrottleDialog
 
 /**
  * 抓包功能主屏幕，Charles Proxy 风格布局：
@@ -40,11 +41,13 @@ fun PacketCaptureScreen(
         CaptureToolbar(
             status = state.status,
             deviceProxy = state.deviceProxy,
+            throttleConfig = state.throttleConfig,
             onStart = { viewModel.startCapture() },
             onStop = { viewModel.stopCapture() },
             onClear = { viewModel.clearPackets() },
             onInstallCa = { viewModel.installCaToDevice() },
             onOpenProtoManager = { viewModel.openProtoManager() },
+            onOpenThrottleDialog = { viewModel.openThrottleDialog() },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -97,6 +100,14 @@ fun PacketCaptureScreen(
 
     if (state.showCaInstallGuide) {
         CaInstallGuideDialog(onDismiss = { viewModel.dismissCaInstallGuide() })
+    }
+
+    if (state.showThrottleDialog) {
+        ThrottleDialog(
+            current = state.throttleConfig,
+            onConfirm = { viewModel.updateThrottle(it) },
+            onDismiss = { viewModel.closeThrottleDialog() },
+        )
     }
 
     if (state.showProtoManager) {

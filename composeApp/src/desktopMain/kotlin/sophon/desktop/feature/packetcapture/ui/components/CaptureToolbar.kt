@@ -11,10 +11,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,9 +29,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import sophon.desktop.feature.packetcapture.model.CaptureStatus
+import sophon.desktop.feature.packetcapture.model.ThrottleConfig
 
 /**
- * 抓包工具栏，提供开始/停止、清空列表及 CA 证书安装的操作入口，
+ * 抓包工具栏，提供开始/停止、清空列表、CA 证书安装及限速配置的操作入口，
  * 并展示当前设备代理地址，按钮颜色随 [CaptureStatus] 联动变化。
  * 过滤框已下移至左侧树形面板底部（Charles 风格）。
  */
@@ -36,11 +40,13 @@ import sophon.desktop.feature.packetcapture.model.CaptureStatus
 fun CaptureToolbar(
     status: CaptureStatus,
     deviceProxy: String,
+    throttleConfig: ThrottleConfig,
     onStart: () -> Unit,
     onStop: () -> Unit,
     onClear: () -> Unit,
     onInstallCa: () -> Unit,
     onOpenProtoManager: () -> Unit,
+    onOpenThrottleDialog: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -86,6 +92,29 @@ fun CaptureToolbar(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
+            FilterChip(
+                selected = throttleConfig.isActive,
+                onClick = onOpenThrottleDialog,
+                label = {
+                    Text(
+                        if (throttleConfig.isActive) throttleConfig.displayLabel else "不限速",
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.NetworkCheck,
+                        contentDescription = "限速",
+                        modifier = Modifier.size(14.dp),
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
+            )
 
             Spacer(Modifier.weight(1f))
 

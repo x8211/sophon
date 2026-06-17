@@ -44,7 +44,8 @@ internal class Http1MitmSession(
             // 能够将连接错误正确上报为 CapturedPacket 而非被静默关闭。
             runCatching { remove("backendSslErrCatcher") }
             addLast("httpClientCodec", HttpClientCodec())
-            addLast("httpAggregatorBackend", HttpObjectAggregator(MAX_CONTENT_LENGTH))
+            // 不使用 HttpObjectAggregator：采用流式转发，避免大文件（> maxContentLength）触发
+            // 聚合器溢出而关闭后端连接，导致前端 channel 也被关闭（unexpected end of stream）。
             addLast(BackendResponseHandler(frontendChannel, pendingRequests, host, onPacketCaptured))
         }
     }

@@ -18,6 +18,7 @@ import sophon.desktop.feature.packetcapture.model.CaptureState
 import sophon.desktop.feature.packetcapture.model.CaptureStatus
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
 import sophon.desktop.feature.packetcapture.model.ProtoPath
+import sophon.desktop.feature.packetcapture.model.ThrottleConfig
 import java.io.File
 
 /**
@@ -141,6 +142,21 @@ class PacketCaptureViewModel(
 
     fun dismissError() {
         _uiState.update { it.copy(errorMessage = null, status = CaptureStatus.STOPPED) }
+    }
+
+    // ─── 限速 ────────────────────────────────────────────────────────────────
+
+    fun openThrottleDialog() {
+        _uiState.update { it.copy(showThrottleDialog = true) }
+    }
+
+    fun closeThrottleDialog() {
+        _uiState.update { it.copy(showThrottleDialog = false) }
+    }
+
+    fun updateThrottle(config: ThrottleConfig) {
+        _uiState.update { it.copy(throttleConfig = config, showThrottleDialog = false) }
+        repository.updateThrottle(config)
     }
 
     // ─── Proto Schema 管理 ──────────────────────────────────────────────────

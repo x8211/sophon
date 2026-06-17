@@ -59,11 +59,20 @@ object CertificateAuthority {
 
     fun getCaCertFile(): File = caCertFile
 
-    fun getSslContextFor(host: String): SslContext {
-        return sslContextCache.getOrPut(host) { buildSslContextFor(host) }
+    /**
+     * 为指定 host 返回用于前端 TLS 的 SslContext。
+     *
+     * @param supportH2 是否宣告 h2 ALPN。应与后端实际协商的协议保持一致：
+     *   - 后端协商到 h2 → true（h2 + http/1.1）
+     *   - 后端仅支持 http/1.1 → false（仅 http/1.1）
+     *   前后端协议一致可消除 ALPN 不匹配导致的 FRAME_SIZE_ERROR。
+     */
+    fun getSslContextFor(host: String, supportH2: Boolean = true): SslContext {
+        val key = "$host|${if (supportH2) "h2" else "h1"}"
+        return sslContextCache.getOrPut(key) { buildSslContextFor(host, supportH2) }
     }
 
-    private fun buildSslContextFor(host: String): SslContext {
+    private fun buildSslContextFor(host: String, supportH2: Boolean = true): SslContext {
         val leafKeyPair = leafKeyPairGenerator.generateKeyPair()
         val issuer = X500Name("CN=MicoToolbox CA, O=MicoToolbox, C=CN")
         val subject = X500Name("CN=$host")
@@ -86,14 +95,18 @@ object CertificateAuthority {
             .setProvider("BC")
             .getCertificate(certBuilder.build(signer))
 
+        val protocols = if (supportH2)
+            arrayOf(ApplicationProtocolNames.HTTP_2, ApplicationProtocolNames.HTTP_1_1)
+        else
+            arrayOf(ApplicationProtocolNames.HTTP_1_1)
+
         return SslContextBuilder.forServer(leafKeyPair.private, leafCert, caCert)
             .applicationProtocolConfig(
                 ApplicationProtocolConfig(
                     ApplicationProtocolConfig.Protocol.ALPN,
                     ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
                     ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
-                    ApplicationProtocolNames.HTTP_2,
-                    ApplicationProtocolNames.HTTP_1_1
+                    *protocols
                 )
             )
             .build()
