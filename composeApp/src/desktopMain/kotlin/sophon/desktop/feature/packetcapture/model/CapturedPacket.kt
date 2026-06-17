@@ -33,8 +33,32 @@ sealed interface CapturedPacket {
     fun requestBodyAsText(): String? =
         requestBody?.let { runCatching { it.toString(Charsets.UTF_8) }.getOrNull() }
 
-    fun responseBodyAsText(): String? =
-        responseBody?.let { runCatching { it.toString(Charsets.UTF_8) }.getOrNull() }
+    fun responseBodyAsText(): String? {
+        val body = responseBody ?: return null
+        val encoding = (responseHeaders["content-encoding"] ?: responseHeaders["Content-Encoding"])
+            ?.lowercase()?.trim()
+        return runCatching {
+            when (encoding) {
+                "gzip" -> java.util.zip.GZIPInputStream(java.io.ByteArrayInputStream(body))
+                    .readBytes()
+                    .toString(Charsets.UTF_8)
+                "deflate" -> {
+                    // 部分服务器对 deflate 使用 zlib 包装，部分使用原始 deflate；优先尝试 zlib
+                    runCatching {
+                        java.util.zip.InflaterInputStream(java.io.ByteArrayInputStream(body))
+                            .readBytes()
+                            .toString(Charsets.UTF_8)
+                    }.getOrElse {
+                        java.util.zip.InflaterInputStream(
+                            java.io.ByteArrayInputStream(body),
+                            java.util.zip.Inflater(true)
+                        ).readBytes().toString(Charsets.UTF_8)
+                    }
+                }
+                else -> body.toString(Charsets.UTF_8)
+            }
+        }.getOrElse { body.toString(Charsets.UTF_8) }
+    }
 
     fun requestBodySize(): Int = requestBody?.size ?: 0
     fun responseBodySize(): Int = responseBody?.size ?: 0

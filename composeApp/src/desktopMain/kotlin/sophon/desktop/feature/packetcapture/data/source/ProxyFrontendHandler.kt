@@ -166,8 +166,13 @@ class ProxyFrontendHandler(
                 when (ProtocolDetector.detectMitm(frontendSsl.applicationProtocol(), backendProto)) {
                     is MitmProtocol.Http1 ->
                         Http1MitmSession(tunnel.host, ctx.channel(), backendChannel, onPacketCaptured, idCounter).install()
-                    is MitmProtocol.Http2 ->
-                        Http2MitmSession(tunnel.host, ctx.channel(), backendChannel, onPacketCaptured, idCounter).install()
+                    is MitmProtocol.Http2 -> {
+                        // BackendChannelManager 接管后端连接：初始 channel 由本协程完成握手后移交，
+                        // 后续 GOAWAY 触发的重连由 Manager 自主完成，对 Http2FrontendStreamHandler 透明。
+                        val backendManager = BackendChannelManager(tunnel.host, tunnel.port, clientSslCtx)
+                        backendManager.donateChannel(backendChannel)
+                        Http2MitmSession(tunnel.host, ctx.channel(), backendManager, onPacketCaptured, idCounter).install()
+                    }
                 }
             }
         }.getOrElse { backendChannel.close(); return }

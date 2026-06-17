@@ -50,10 +50,12 @@ internal fun addHttp2BackendCodec(backendChannel: Channel) {
  * 此时后端 HTTP/2 codec 已由 [addHttp2BackendCodec] 提前就位，无需重复添加。
  * 每条 HTTP/2 流独立配对：前端流 → [Http2FrontendStreamHandler] → 后端流 → [Http2BackendStreamHandler]。
  * 响应帧**实时转发**（支持 gRPC server-streaming），并在 END_STREAM 时触发抓包回调。
+ *
+ * @param backendManager 管理后端连接生命周期，在 GOAWAY 后自动重建连接
  */
 internal fun addHttp2FrontendPipeline(
     frontendChannel: Channel,
-    backendChannel: Channel,
+    backendManager: BackendChannelManager,
     host: String,
     onPacketCaptured: (CapturedPacket) -> Unit,
     idCounter: AtomicLong
@@ -70,7 +72,7 @@ internal fun addHttp2FrontendPipeline(
             override fun initChannel(ch: Channel) {
                 // 每条新入站流创建独立的 handler 实例，保证流级状态隔离
                 ch.pipeline().addLast(
-                    Http2FrontendStreamHandler(backendChannel, host, onPacketCaptured, idCounter)
+                    Http2FrontendStreamHandler(backendManager, host, onPacketCaptured, idCounter)
                 )
             }
         })
@@ -80,12 +82,13 @@ internal fun addHttp2FrontendPipeline(
 /**
  * 处理来自客户端的单条 HTTP/2 入站流。
  *
- * 策略：缓冲请求的全部帧直至 END_STREAM，随后在后端连接上创建对应出站流并转发请求。
+ * 策略：缓冲请求的全部帧直至 END_STREAM，随后通过 [BackendChannelManager.withChannel] 获取
+ * 可用后端连接（必要时自动重建），再开子流转发请求。
  * 这对 gRPC 一元调用（unary）和服务端流式调用（server-streaming）均适用，
  * 对于客户端流式 / 双向流式调用则会在 END_STREAM 前阻塞，属当前实现的已知限制。
  */
 private class Http2FrontendStreamHandler(
-    private val backendParentChannel: Channel,
+    private val backendManager: BackendChannelManager,
     private val host: String,
     private val onPacketCaptured: (CapturedPacket) -> Unit,
     private val idCounter: AtomicLong
@@ -125,6 +128,34 @@ private class Http2FrontendStreamHandler(
         val startNano = System.nanoTime()
         val frontendStream = ctx.channel()
 
+        backendManager.withChannel(
+            eventLoop = ctx.channel().eventLoop(),
+            action = { backendParentChannel ->
+                openBackendStream(
+                    backendParentChannel, frontendStream,
+                    packetId, timestamp, startNano, headers, requestBodyBytes
+                )
+            },
+            onError = { cause ->
+                // 重建后端连接失败（GOAWAY 且重连不可达），记录错误包后关闭前端流
+                fireErrorPacket(packetId, timestamp, startNano, headers, requestBodyBytes, cause.message ?: "Reconnect failed")
+                frontendStream.close()
+            }
+        )
+    }
+
+    /**
+     * 在已就绪的后端父 Channel 上打开子流，转发完整请求，并注册 [Http2BackendStreamHandler]。
+     */
+    private fun openBackendStream(
+        backendParentChannel: Channel,
+        frontendStream: Channel,
+        packetId: Long,
+        timestamp: Long,
+        startNano: Long,
+        headers: Http2Headers,
+        requestBodyBytes: ByteArray?
+    ) {
         Http2StreamChannelBootstrap(backendParentChannel)
             .handler(object : ChannelInitializer<Channel>() {
                 override fun initChannel(ch: Channel) {
@@ -145,6 +176,10 @@ private class Http2FrontendStreamHandler(
             .open()
             .addListener { openFuture ->
                 if (!openFuture.isSuccess) {
+                    // open() 失败：通常因为 GOAWAY 在 withChannel 检查后、open() 前的极小窗口内到达。
+                    // 记录错误包，前端流关闭使 App 感知到 CANCELLED 并自行重试。
+                    val errMsg = openFuture.cause()?.message ?: "Failed to open backend stream"
+                    fireErrorPacket(packetId, timestamp, startNano, headers, requestBodyBytes, errMsg)
                     frontendStream.close()
                     return@addListener
                 }
@@ -158,12 +193,44 @@ private class Http2FrontendStreamHandler(
                 // 转发请求体
                 if (hasBody) {
                     val bodyBuf = backendStream.alloc()
-                        .buffer(requestBodyBytes.size)
+                        .buffer(requestBodyBytes!!.size)
                         .writeBytes(requestBodyBytes)
                     backendStream.write(DefaultHttp2DataFrame(bodyBuf, true))
                 }
                 backendStream.flush()
             }
+    }
+
+    private fun fireErrorPacket(
+        packetId: Long,
+        timestamp: Long,
+        startNano: Long,
+        headers: Http2Headers,
+        requestBodyBytes: ByteArray?,
+        errMsg: String
+    ) {
+        val reqHeadersMap = headers.toFlatMap()
+        val isGrpc = GrpcDetector.isGrpc(reqHeadersMap)
+        val duration = (System.nanoTime() - startNano) / 1_000_000
+        val path = headers.path()?.toString() ?: "/"
+        val method = headers.method()?.toString() ?: "POST"
+        val scheme = headers.scheme()?.toString() ?: "https"
+        val packet = if (isGrpc) {
+            CapturedPacket.Grpc(
+                id = packetId, timestamp = timestamp,
+                method = method, scheme = scheme, host = host, path = path,
+                requestHeaders = reqHeadersMap, requestBody = requestBodyBytes,
+                durationMs = duration, error = errMsg
+            )
+        } else {
+            CapturedPacket.Http(
+                id = packetId, timestamp = timestamp,
+                method = method, scheme = scheme, host = host, path = path,
+                requestHeaders = reqHeadersMap, requestBody = requestBodyBytes,
+                durationMs = duration, error = errMsg
+            )
+        }
+        onPacketCaptured(packet)
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
@@ -176,6 +243,7 @@ private class Http2FrontendStreamHandler(
  *
  * 每个响应帧**立即转发**到对应的前端流，同时在本地累积一份副本；
  * 收到最终 END_STREAM（可能来自 DATA 帧或 trailers HEADERS 帧）后触发 [CapturedPacket] 回调。
+ * 若流被 RST_STREAM 取消，[channelInactive] 补发带错误的抓包记录。
  */
 private class Http2BackendStreamHandler(
     private val frontendStream: Channel,
@@ -228,7 +296,14 @@ private class Http2BackendStreamHandler(
         }
     }
 
-    private fun fireCapture() {
+    /**
+     * 触发抓包回调。
+     *
+     * [error] 非 null 表示流因异常终止（RST_STREAM / 连接断开）而非正常 END_STREAM 结束。
+     * 此时若服务端尚未发送过任何状态码（[firstStatusSet] = false），则 statusCode 保持 null，
+     * 避免将默认值 200 误报为正常响应。
+     */
+    private fun fireCapture(error: String? = null) {
         if (capturedFired) return
         capturedFired = true
 
@@ -240,30 +315,42 @@ private class Http2BackendStreamHandler(
         val respHeadersMap = respHeadersAccumulator.toMap()
         val responseBodyBytes = respDataBuf.toByteArray().takeIf { it.isNotEmpty() }
         val isGrpc = GrpcDetector.isGrpc(reqHeadersMap)
+        // 仅当服务端确实发送过 status 时才使用，避免 RST 场景误填默认值 200
+        val statusCode = if (firstStatusSet) firstStatusCode else null
 
         val packet = if (isGrpc) {
             CapturedPacket.Grpc(
                 id = packetId, timestamp = timestamp,
                 method = method, scheme = scheme, host = host, path = path,
                 requestHeaders = reqHeadersMap, requestBody = requestBodyBytes,
-                statusCode = firstStatusCode,
+                statusCode = statusCode,
                 responseHeaders = respHeadersMap, responseBody = responseBodyBytes,
-                durationMs = duration
+                durationMs = duration, error = error
             )
         } else {
             CapturedPacket.Http(
                 id = packetId, timestamp = timestamp,
                 method = method, scheme = scheme, host = host, path = path,
                 requestHeaders = reqHeadersMap, requestBody = requestBodyBytes,
-                statusCode = firstStatusCode,
+                statusCode = statusCode,
                 responseHeaders = respHeadersMap, responseBody = responseBodyBytes,
-                durationMs = duration
+                durationMs = duration, error = error
             )
         }
         onPacketCaptured(packet)
     }
 
+    override fun channelInactive(ctx: ChannelHandlerContext) {
+        // 流被 RST_STREAM 取消（非正常 END_STREAM 终止），补发带错误的抓包记录并关闭前端流。
+        // capturedFired 守卫确保正常结束后 channelInactive 触发时不会重复上报。
+        if (!capturedFired) {
+            fireCapture(error = "CANCELLED (RST_STREAM)")
+            frontendStream.close()
+        }
+    }
+
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+        fireCapture(error = cause.message ?: "Stream error")
         ctx.close()
         frontendStream.close()
     }

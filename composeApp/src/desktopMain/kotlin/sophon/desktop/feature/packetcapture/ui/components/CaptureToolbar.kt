@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
@@ -39,6 +40,7 @@ fun CaptureToolbar(
     onStop: () -> Unit,
     onClear: () -> Unit,
     onInstallCa: () -> Unit,
+    onOpenProtoManager: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -103,6 +105,14 @@ fun CaptureToolbar(
                 Icon(Icons.Default.Lock, null, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("安装CA证书", style = MaterialTheme.typography.labelSmall)
+            }
+
+            IconButton(onClick = onOpenProtoManager) {
+                Icon(
+                    Icons.Filled.Code,
+                    contentDescription = "管理 Proto Schema",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

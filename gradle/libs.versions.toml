@@ -16,6 +16,7 @@ serialization-json = "1.9.0"
 sqlite-jdbc = "3.49.1.0"
 netty = "4.1.121.Final"
 bouncycastle = "1.80"
+protobuf = "3.25.3"
 
 
 
@@ -33,6 +34,8 @@ compose-components-resources = { module = "org.jetbrains.compose.components:comp
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 netty-all = { module = "io.netty:netty-all", version.ref = "netty" }
 bouncycastle = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
+protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
+protobuf-java-util = { module = "com.google.protobuf:protobuf-java-util", version.ref = "protobuf" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

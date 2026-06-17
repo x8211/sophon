@@ -16,7 +16,15 @@ data class CaptureState(
     val filterText: String = "",
     val errorMessage: String? = null,
     val showCaInstallGuide: Boolean = false,
-    val expandedHosts: Set<String> = emptySet()
+    val expandedHosts: Set<String> = emptySet(),
+    /** 用户配置的 .proto 路径列表（文件或目录）。 */
+    val protoPaths: List<ProtoPath> = emptyList(),
+    /** 是否显示 Proto Schema 管理对话框。 */
+    val showProtoManager: Boolean = false,
+    /** 已成功加载的 Schema 消息描述符数量；-1 表示尚未加载。 */
+    val schemaLoadedCount: Int = -1,
+    /** Schema 加载出错时的错误信息。 */
+    val schemaLoadError: String? = null
 ) {
     val isRunning: Boolean get() = status == CaptureStatus.RUNNING
 

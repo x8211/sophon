@@ -79,6 +79,8 @@ kotlin {
             implementation(libs.sqlite.jdbc)
             implementation(libs.netty.all)
             implementation(libs.bouncycastle)
+            implementation(libs.protobuf.java)
+            implementation(libs.protobuf.java.util)
         }
         desktopTest.dependencies {
             implementation(kotlin("test"))

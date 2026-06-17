@@ -22,6 +22,7 @@ import sophon.desktop.feature.packetcapture.ui.components.CaptureToolbar
 import sophon.desktop.feature.packetcapture.ui.components.EmptyDetailPanel
 import sophon.desktop.feature.packetcapture.ui.components.HostTreePanel
 import sophon.desktop.feature.packetcapture.ui.components.PacketDetailPanel
+import sophon.desktop.feature.packetcapture.ui.components.ProtoSchemaDialog
 
 /**
  * 抓包功能主屏幕，Charles Proxy 风格布局：
@@ -43,6 +44,7 @@ fun PacketCaptureScreen(
             onStop = { viewModel.stopCapture() },
             onClear = { viewModel.clearPackets() },
             onInstallCa = { viewModel.installCaToDevice() },
+            onOpenProtoManager = { viewModel.openProtoManager() },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -95,6 +97,18 @@ fun PacketCaptureScreen(
 
     if (state.showCaInstallGuide) {
         CaInstallGuideDialog(onDismiss = { viewModel.dismissCaInstallGuide() })
+    }
+
+    if (state.showProtoManager) {
+        ProtoSchemaDialog(
+            protoPaths = state.protoPaths,
+            schemaLoadedCount = state.schemaLoadedCount,
+            schemaLoadError = state.schemaLoadError,
+            onAddProtoPath = { path, isDir -> viewModel.addProtoPath(path, isDir) },
+            onRemoveProtoPath = { viewModel.removeProtoPath(it) },
+            onReload = { viewModel.reloadProtoSchema() },
+            onDismiss = { viewModel.closeProtoManager() }
+        )
     }
 }
 
