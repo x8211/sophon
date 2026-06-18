@@ -30,8 +30,31 @@ sealed interface CapturedPacket {
     val isComplete: Boolean get() = statusCode != null || error != null
     val statusText: String get() = statusCode?.toString() ?: error?.let { "ERR" } ?: "..."
 
-    fun requestBodyAsText(): String? =
-        requestBody?.let { runCatching { it.toString(Charsets.UTF_8) }.getOrNull() }
+    fun requestBodyAsText(): String? {
+        val body = requestBody ?: return null
+        val encoding = (requestHeaders["content-encoding"] ?: requestHeaders["Content-Encoding"])
+            ?.lowercase()?.trim()
+        return runCatching {
+            when (encoding) {
+                "gzip" -> java.util.zip.GZIPInputStream(java.io.ByteArrayInputStream(body))
+                    .readBytes()
+                    .toString(Charsets.UTF_8)
+                "deflate" -> {
+                    runCatching {
+                        java.util.zip.InflaterInputStream(java.io.ByteArrayInputStream(body))
+                            .readBytes()
+                            .toString(Charsets.UTF_8)
+                    }.getOrElse {
+                        java.util.zip.InflaterInputStream(
+                            java.io.ByteArrayInputStream(body),
+                            java.util.zip.Inflater(true)
+                        ).readBytes().toString(Charsets.UTF_8)
+                    }
+                }
+                else -> body.toString(Charsets.UTF_8)
+            }
+        }.getOrElse { body.toString(Charsets.UTF_8) }
+    }
 
     fun responseBodyAsText(): String? {
         val body = responseBody ?: return null

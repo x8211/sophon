@@ -43,6 +43,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import sophon.desktop.feature.packetcapture.data.source.grpc.GrpcBodyDecoder
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 
 private val prettyJson = Json { prettyPrint = true }
 
@@ -307,7 +309,15 @@ private fun ContentsTab(packet: CapturedPacket) {
                     BodySection(null, formatAsJson = false)
                 }
             } else {
-                // HTTP：请求头 / 请求体 子 Tab
+                // HTTP：请求头 / Query 参数（有 ? 时）/ 请求体 子 Tab
+                val queryParams = remember(packet.id) { parseQueryParams(packet.path) }
+                val requestTabs = remember(packet.id) {
+                    buildList {
+                        add("请求头")
+                        if (queryParams.isNotEmpty()) add("Query 参数")
+                        add("请求体")
+                    }
+                }
                 var requestTab by remember(packet.id) { mutableIntStateOf(0) }
                 ScrollableTabRow(
                     selectedTabIndex = requestTab,
@@ -315,7 +325,7 @@ private fun ContentsTab(packet: CapturedPacket) {
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     divider = {}
                 ) {
-                    listOf("请求头", "请求体").forEachIndexed { index, title ->
+                    requestTabs.forEachIndexed { index, title ->
                         Tab(
                             selected = requestTab == index,
                             onClick = { requestTab = index },
@@ -324,8 +334,9 @@ private fun ContentsTab(packet: CapturedPacket) {
                     }
                 }
                 HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                when (requestTab) {
-                    0 -> RequestHeadersSection(packet.requestHeaders)
+                when (requestTabs.getOrNull(requestTab)) {
+                    "请求头" -> RequestHeadersSection(packet.requestHeaders)
+                    "Query 参数" -> QueryParamsSection(queryParams)
                     else -> RequestBodySection(packet)
                 }
             }
@@ -667,6 +678,61 @@ private fun JsonPrimitiveRow(key: String?, primitive: JsonPrimitive, depth: Int)
             Text(": ", style = jsonMonoStyle, color = Color(0xFF616161))
         }
         Text(valueText, style = jsonMonoStyle, color = valueColor)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Query 参数解析与展示
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 从 path（含 query string）中解析出参数键值对。
+ * 支持 URL 编码的 key/value，保留同名参数的多值（List<Pair>）。
+ */
+private fun parseQueryParams(path: String): List<Pair<String, String>> {
+    val queryIndex = path.indexOf('?')
+    if (queryIndex < 0) return emptyList()
+    val queryString = path.substring(queryIndex + 1)
+    if (queryString.isBlank()) return emptyList()
+    return queryString.split('&').mapNotNull { pair ->
+        val eqIdx = pair.indexOf('=')
+        if (eqIdx < 0) {
+            val key = runCatching { URLDecoder.decode(pair, StandardCharsets.UTF_8.name()) }.getOrDefault(pair)
+            if (key.isNotEmpty()) key to "" else null
+        } else {
+            val rawKey = pair.substring(0, eqIdx)
+            val rawVal = pair.substring(eqIdx + 1)
+            val key = runCatching { URLDecoder.decode(rawKey, StandardCharsets.UTF_8.name()) }.getOrDefault(rawKey)
+            val value = runCatching { URLDecoder.decode(rawVal, StandardCharsets.UTF_8.name()) }.getOrDefault(rawVal)
+            if (key.isNotEmpty()) key to value else null
+        }
+    }
+}
+
+@Composable
+private fun QueryParamsSection(params: List<Pair<String, String>>) {
+    if (params.isEmpty()) {
+        Box(
+            Modifier.fillMaxSize().background(Color(0xFFFAFAFA)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("(无 Query 参数)", color = Color(0xFF9E9E9E), style = MaterialTheme.typography.bodySmall)
+        }
+        return
+    }
+    SelectionContainer {
+        val scrollState = rememberScrollState()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFFAFAFA))
+                .verticalScroll(scrollState)
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            params.forEach { (key, value) ->
+                HeaderRow(key = key, value = value)
+            }
+        }
     }
 }
 
