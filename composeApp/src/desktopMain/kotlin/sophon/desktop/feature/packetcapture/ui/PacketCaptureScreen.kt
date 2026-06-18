@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -62,7 +61,7 @@ fun PacketCaptureScreen(
                 onSelectPacket = { viewModel.selectPacket(it) },
                 onFilterChange = { viewModel.updateFilter(it) },
                 modifier = Modifier
-                    .width(260.dp)
+                    .weight(0.4f)
                     .fillMaxHeight()
             )
 
@@ -73,13 +72,13 @@ fun PacketCaptureScreen(
                 PacketDetailPanel(
                     packet = selectedPacket,
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(0.6f)
                         .fillMaxHeight()
                 )
             } else {
                 EmptyDetailPanel(
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(0.6f)
                         .fillMaxHeight()
                 )
             }

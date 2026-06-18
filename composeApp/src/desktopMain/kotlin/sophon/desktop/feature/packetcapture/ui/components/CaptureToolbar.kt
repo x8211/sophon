@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.PlayArrow
@@ -31,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import sophon.composeapp.generated.resources.Res
+import sophon.composeapp.generated.resources.ic_ca_certificate
 import sophon.composeapp.generated.resources.ic_protobuf
 import sophon.desktop.feature.packetcapture.model.CaptureStatus
 import sophon.desktop.feature.packetcapture.model.ThrottleConfig
@@ -133,9 +133,10 @@ fun CaptureToolbar(
 
             TextButton(onClick = onInstallCa) {
                 Icon(
-                    Icons.Default.CardMembership,
+                    painter = painterResource(Res.drawable.ic_ca_certificate),
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
+                    tint = Color.Unspecified
                 )
                 Spacer(Modifier.width(4.dp))
                 Text("安装CA证书", style = MaterialTheme.typography.labelSmall)

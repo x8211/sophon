@@ -104,7 +104,15 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
             fixedHeader = AppScreen.Home,
             fixedFooter = AppScreen.Settings,
             currentScreen = currentScreen,
-            onNavigate = { navController.navigate(it.name) },
+            onNavigate = { screen ->
+                navController.navigate(screen.name) {
+                    popUpTo(navController.graph.startDestinationId) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            },
             isExpanded = isExpanded,
             onExpandChange = { isExpanded = it }
         )

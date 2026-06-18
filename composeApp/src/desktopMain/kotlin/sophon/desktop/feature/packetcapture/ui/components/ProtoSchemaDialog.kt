@@ -50,7 +50,7 @@ import javax.swing.filechooser.FileNameExtensionFilter
 /**
  * gRPC Schema 管理对话框。
  *
- * 允许用户通过系统文件选择器添加单个 `.proto` 文件或包含多个 `.proto` 的文件夹，
+ * 允许用户通过系统文件选择器添加包含单个或多个 `.proto` 的文件夹，
  * 路径列表持久化由 ViewModel 负责。
  */
 @Composable
@@ -90,7 +90,7 @@ fun ProtoSchemaDialog(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                "暂无路径\n点击下方按钮添加 .proto 文件或文件夹",
+                                "暂无路径\n点击下方按钮添加包含 .proto 文件的文件夹",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -115,40 +115,25 @@ fun ProtoSchemaDialog(
                 Spacer(Modifier.height(12.dp))
 
                 // 添加按钮行
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            val dir = pickDirectory()
+                            dir?.let { onAddProtoPath(it, true) }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                val paths = pickFiles()
-                                paths.forEach { onAddProtoPath(it, false) }
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.Description, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("添加 .proto 文件", style = MaterialTheme.typography.labelSmall)
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            scope.launch {
-                                val dir = pickDirectory()
-                                dir?.let { onAddProtoPath(it, true) }
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.CreateNewFolder, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("添加文件夹", style = MaterialTheme.typography.labelSmall)
-                    }
+                    Icon(Icons.Default.CreateNewFolder, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("添加文件夹", style = MaterialTheme.typography.labelSmall)
                 }
 
                 Spacer(Modifier.height(8.dp))
-                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
                 Spacer(Modifier.height(8.dp))
 
                 // 加载状态
@@ -166,7 +151,10 @@ fun ProtoSchemaDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         statusText,
-                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 11.sp),
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp
+                        ),
                         color = statusColor,
                         modifier = Modifier.weight(1f)
                     )
@@ -206,7 +194,10 @@ private fun ProtoPathItem(protoPath: ProtoPath, onRemove: () -> Unit) {
         Spacer(Modifier.width(8.dp))
         Text(
             text = protoPath.path,
-            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 11.sp),
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontFamily = FontFamily.Monospace,
+                fontSize = 11.sp
+            ),
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
