@@ -1,4 +1,4 @@
-package sophon.desktop.feature.packetcapture.data.source
+package sophon.desktop.feature.packetcapture.data.source.mitm
 
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
@@ -6,6 +6,7 @@ import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.http.DefaultFullHttpRequest
 import io.netty.handler.codec.http.FullHttpRequest
 import io.netty.handler.codec.http.HttpHeaderNames
+import sophon.desktop.feature.packetcapture.data.source.grpc.GrpcDetector
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
 import java.util.ArrayDeque
 import java.util.concurrent.atomic.AtomicLong

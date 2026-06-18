@@ -1,4 +1,4 @@
-package sophon.desktop.feature.packetcapture.data.source
+package sophon.desktop.feature.packetcapture.data.source.mitm
 
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
@@ -10,7 +10,7 @@ import io.netty.handler.codec.http.HttpContent
 import io.netty.handler.codec.http.HttpResponse
 import io.netty.handler.codec.http.LastHttpContent
 import io.netty.util.ReferenceCountUtil
-import sophon.desktop.feature.packetcapture.data.source.BackendResponseHandler.Companion.MAX_CAPTURE_BODY_BYTES
+import sophon.desktop.feature.packetcapture.data.source.mitm.BackendResponseHandler.Companion.MAX_CAPTURE_BODY_BYTES
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
 import java.io.ByteArrayOutputStream
 import java.util.ArrayDeque
@@ -40,7 +40,7 @@ internal class BackendResponseHandler(
 
     private companion object {
         /** 每个响应最多在内存中积累多少字节用于抓包界面展示。 */
-        private const val MAX_CAPTURE_BODY_BYTES = 1 * 1024 * 1024  // 1 MB
+        const val MAX_CAPTURE_BODY_BYTES = 1 * 1024 * 1024  // 1 MB
     }
 
     private var activePending: PendingRequest? = null

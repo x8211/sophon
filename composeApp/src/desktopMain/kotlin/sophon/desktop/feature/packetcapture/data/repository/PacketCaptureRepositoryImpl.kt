@@ -4,8 +4,8 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import sophon.desktop.core.Shell.simpleShell
-import sophon.desktop.feature.packetcapture.data.source.CertificateAuthority
-import sophon.desktop.feature.packetcapture.data.source.MitmProxyServer
+import sophon.desktop.feature.packetcapture.data.source.MitmProxyDataSource
+import sophon.desktop.feature.packetcapture.data.source.cert.CertificateAuthority
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
 import sophon.desktop.feature.packetcapture.model.ThrottleConfig
 import sophon.desktop.feature.proxy.data.repository.ProxyRepository
@@ -19,11 +19,11 @@ class PacketCaptureRepositoryImpl(
     private val proxyRepository: ProxyRepository = ProxyRepositoryImpl()
 ) : PacketCaptureRepository {
 
-    private var proxyServer: MitmProxyServer? = null
+    private var proxyServer: MitmProxyDataSource? = null
     private var pendingThrottleConfig: ThrottleConfig = ThrottleConfig()
 
     override fun startCapture(port: Int): Flow<CapturedPacket> = callbackFlow {
-        val server = MitmProxyServer { packet ->
+        val server = MitmProxyDataSource { packet ->
             trySend(packet)
         }
         proxyServer = server

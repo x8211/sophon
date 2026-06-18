@@ -89,7 +89,7 @@ fun HostTreePanel(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "暂无数据\n等待 HTTP/HTTPS 流量...",
+                        "暂无数据",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center

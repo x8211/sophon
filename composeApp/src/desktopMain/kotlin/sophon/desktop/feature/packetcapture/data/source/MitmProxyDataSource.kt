@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import sophon.desktop.feature.packetcapture.data.source.mitm.ProxyFrontendHandler
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
 import sophon.desktop.feature.packetcapture.model.ThrottleConfig
 import java.util.concurrent.atomic.AtomicLong
@@ -30,7 +31,7 @@ private const val THROTTLE_CHECK_INTERVAL_MS = 500L
 private const val THROTTLE_MAX_DELAY_MS = 15_000L
 
 /**
- * 基于 Netty 的本地 MITM 代理服务器，封装 NIO 事件循环组的启动与停止。
+ * 基于 Netty 的本地 MITM 代理数据源，封装 NIO 事件循环组的启动与停止。
  * 每个进入连接的处理委托给 [ProxyFrontendHandler]，捕获到的数据包通过 [onPacketCaptured] 回调上报。
  * 请求体大小上限为 10 MB。
  *
@@ -41,7 +42,7 @@ private const val THROTTLE_MAX_DELAY_MS = 15_000L
  * 作用于解密后的明文流，完全规避握手阶段数据延迟导致的协议错误（FRAME_SIZE_ERROR）。
  * 限速在运行时可通过 [updateThrottle] 动态调整，无需重启代理。
  */
-class MitmProxyServer(private val onPacketCaptured: (CapturedPacket) -> Unit) {
+class MitmProxyDataSource(private val onPacketCaptured: (CapturedPacket) -> Unit) {
 
     private var bossGroup: NioEventLoopGroup? = null
     private var workerGroup: NioEventLoopGroup? = null
@@ -88,7 +89,7 @@ class MitmProxyServer(private val onPacketCaptured: (CapturedPacket) -> Unit) {
                         // plain HTTP 路径由 ProxyFrontendHandler.handlePlainHttp 在转发前注入。
                         ch.pipeline().addLast("httpServerCodec", HttpServerCodec())
                         ch.pipeline().addLast("httpAggregator", HttpObjectAggregator(MAX_CONTENT_LENGTH))
-                        ch.pipeline().addLast(ProxyFrontendHandler(scope!!, onPacketCaptured, idCounter, this@MitmProxyServer))
+                        ch.pipeline().addLast(ProxyFrontendHandler(scope!!, onPacketCaptured, idCounter, this@MitmProxyDataSource))
                     }
                 })
 

@@ -1,8 +1,8 @@
 package sophon.desktop.feature.packetcapture.data.source.protocol
 
 import io.netty.channel.Channel
-import sophon.desktop.feature.packetcapture.data.source.BackendChannelManager
-import sophon.desktop.feature.packetcapture.data.source.addHttp2FrontendPipeline
+import sophon.desktop.feature.packetcapture.data.source.mitm.BackendChannelManager
+import sophon.desktop.feature.packetcapture.data.source.mitm.addHttp2FrontendPipeline
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
 import java.util.concurrent.atomic.AtomicLong
 

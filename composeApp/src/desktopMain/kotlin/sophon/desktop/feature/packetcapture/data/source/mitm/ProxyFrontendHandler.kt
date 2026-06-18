@@ -1,4 +1,4 @@
-package sophon.desktop.feature.packetcapture.data.source
+package sophon.desktop.feature.packetcapture.data.source.mitm
 
 import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.Unpooled
@@ -27,6 +27,8 @@ import io.netty.handler.ssl.SslHandler
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import sophon.desktop.feature.packetcapture.data.source.MitmProxyDataSource
+import sophon.desktop.feature.packetcapture.data.source.cert.CertificateAuthority
 import sophon.desktop.feature.packetcapture.data.source.protocol.Http1MitmSession
 import sophon.desktop.feature.packetcapture.data.source.protocol.Http2MitmSession
 import sophon.desktop.feature.packetcapture.data.source.protocol.InboundRequest
@@ -53,7 +55,7 @@ class ProxyFrontendHandler(
     private val scope: CoroutineScope,
     private val onPacketCaptured: (CapturedPacket) -> Unit,
     private val idCounter: AtomicLong,
-    private val proxyServer: MitmProxyServer,
+    private val proxyServer: MitmProxyDataSource,
 ) : SimpleChannelInboundHandler<FullHttpRequest>() {
 
     override fun channelRead0(ctx: ChannelHandlerContext, msg: FullHttpRequest) {

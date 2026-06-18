@@ -4,9 +4,9 @@ import io.netty.channel.Channel
 import io.netty.handler.codec.http.HttpClientCodec
 import io.netty.handler.codec.http.HttpObjectAggregator
 import io.netty.handler.codec.http.HttpServerCodec
-import sophon.desktop.feature.packetcapture.data.source.BackendResponseHandler
-import sophon.desktop.feature.packetcapture.data.source.HttpsMitmHandler
-import sophon.desktop.feature.packetcapture.data.source.PendingRequest
+import sophon.desktop.feature.packetcapture.data.source.mitm.BackendResponseHandler
+import sophon.desktop.feature.packetcapture.data.source.mitm.HttpsMitmHandler
+import sophon.desktop.feature.packetcapture.data.source.mitm.PendingRequest
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
 import java.util.ArrayDeque
 import java.util.concurrent.atomic.AtomicLong

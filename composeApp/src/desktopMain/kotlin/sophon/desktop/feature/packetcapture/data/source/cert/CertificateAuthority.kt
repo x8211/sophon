@@ -1,4 +1,4 @@
-package sophon.desktop.feature.packetcapture.data.source
+package sophon.desktop.feature.packetcapture.data.source.cert
 
 import io.netty.handler.ssl.ApplicationProtocolConfig
 import io.netty.handler.ssl.ApplicationProtocolNames

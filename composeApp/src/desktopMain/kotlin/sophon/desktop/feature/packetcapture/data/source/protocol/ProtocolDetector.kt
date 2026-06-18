@@ -3,7 +3,7 @@ package sophon.desktop.feature.packetcapture.data.source.protocol
 import io.netty.handler.codec.http.FullHttpRequest
 import io.netty.handler.codec.http.HttpMethod
 import io.netty.handler.ssl.ApplicationProtocolNames
-import sophon.desktop.feature.packetcapture.data.source.GrpcDetector
+import sophon.desktop.feature.packetcapture.data.source.grpc.GrpcDetector
 import sophon.desktop.feature.packetcapture.data.source.protocol.ProtocolDetector.detect
 import sophon.desktop.feature.packetcapture.data.source.protocol.ProtocolDetector.detectMitm
 import java.net.URI

@@ -2,13 +2,16 @@
 
 ## 1. 模块概览
 
-`packetcapture` 是一个基于 **Netty MITM 代理**实现的 HTTP/HTTPS 流量抓包功能模块。它在本机启动一个本地代理服务器（默认端口 8888），拦截流经该代理的 HTTP 明文请求和 HTTPS 加密请求，并实时呈现在 UI 界面中。
+`packetcapture` 是一个基于 **Netty MITM 代理**实现的 HTTP/HTTPS 流量抓包功能模块。它在本机启动一个本地代理服务器（默认端口 8888），拦截流经该代理的 HTTP 明文请求和 HTTPS/HTTP2/gRPC 加密请求，并实时呈现在 UI 界面中。
 
 **核心能力**：
-- HTTP 明文流量透明转发与捕获
+- HTTP/1.1 明文流量透明转发与捕获
 - HTTPS 流量中间人（MITM）解密与捕获（需设备安装自签 CA 证书）
+- HTTP/2 及 gRPC over h2 流量捕获（ALPN 协商，按流配对）
 - 动态生成按域名定制的叶子证书（BouncyCastle）
-- 实时流量列表展示、关键词过滤、请求详情查看
+- gRPC Protobuf 解码（支持 Schema-based 与无 Schema 启发式两种模式）
+- 运行时可调的网络限速（`GlobalTrafficShapingHandler`）
+- 实时流量列表展示、关键词过滤、按 Host 分组树形视图、请求详情查看
 - 通过 `adb push` 将 CA 证书推送至 Android 设备并提供安装引导
 
 ---
@@ -17,27 +20,48 @@
 
 ```text
 packetcapture/
-├── ARCHITECTURE.md                        # 本文件
+├── ARCHITECTURE.md
 ├── model/
-│   ├── CapturedPacket.kt                  # 捕获数据的核心不可变数据类
-│   └── CaptureState.kt                    # UI 状态聚合（含过滤、选中等计算属性）
+│   ├── CapturedPacket.kt              # 捕获记录（sealed interface：Http / Grpc）
+│   ├── CaptureState.kt                # UI 单一状态源（含过滤、分组、Schema、限速派生属性）
+│   ├── ThrottleConfig.kt              # 网络限速配置（预设档位 + 自定义 Kbps）
+│   └── ProtoPath.kt                   # 用户配置的 .proto 路径（持久化）
 ├── data/
 │   ├── repository/
 │   │   ├── PacketCaptureRepository.kt     # 数据层对外接口
-│   │   └── PacketCaptureRepositoryImpl.kt # 数据层实现（聚合 Source 与外部依赖）
+│   │   └── PacketCaptureRepositoryImpl.kt # 数据层实现
 │   └── source/
-│       ├── CertificateAuthority.kt        # CA 证书管理与按 host 动态签发叶子证书
-│       ├── MitmProxyServer.kt             # Netty 服务器入口（生命周期管理）
-│       ├── ProxyFrontendHandler.kt        # HTTP/HTTPS CONNECT 路由与前端处理
-│       ├── HttpsMitmHandler.kt            # HTTPS MITM：请求侧拦截与转发
-│       └── BackendResponseHandler.kt      # HTTPS MITM：后端响应侧接收与回写
+│       ├── MitmProxyDataSource.kt         # Netty 服务器入口（生命周期 + 限速管理）
+│       ├── mitm/                          # Netty MITM pipeline handlers
+│       │   ├── ProxyFrontendHandler.kt    # HTTP/HTTPS CONNECT 路由与前端处理
+│       │   ├── HttpsMitmHandler.kt        # HTTP/1.1 MITM：请求侧拦截 + PendingRequest 入队
+│       │   ├── BackendResponseHandler.kt  # HTTP/1.1 MITM：后端响应侧流式接收与回写
+│       │   ├── Http2MitmHandler.kt        # HTTP/2 MITM：前后端 codec 装配 + 流配对
+│       │   ├── BackendChannelManager.kt   # HTTP/2 后端连接生命周期（GOAWAY 自动重连）
+│       │   └── NettyExtensions.kt         # Netty Future → Kotlin suspend 桥接工具
+│       ├── cert/
+│       │   └── CertificateAuthority.kt    # CA 证书管理与按 host 动态签发叶子证书
+│       ├── protocol/
+│       │   ├── ProtocolDetector.kt        # 两阶段协议检测（PlainHttp/CONNECT + ALPN）
+│       │   ├── InboundRequest.kt          # 第一阶段结果模型（sealed interface）
+│       │   ├── MitmProtocol.kt            # 第二阶段结果模型（Http1 / Http2）
+│       │   ├── Http1MitmSession.kt        # HTTP/1.1 MITM 会话装配
+│       │   └── Http2MitmSession.kt        # HTTP/2 MITM 会话装配
+│       └── grpc/
+│           ├── GrpcDetector.kt            # gRPC 请求识别（Content-Type 判断）
+│           ├── GrpcBodyDecoder.kt         # gRPC body 解码门面（schema-based → schemaless）
+│           ├── ProtobufSchemaRegistry.kt  # Schema 构建与 gRPC 方法→消息类型映射
+│           ├── ProtobufSchemalessDecoder.kt # 无 Schema 启发式 Protobuf 帧解析
+│           └── EmbeddedProtoc.kt          # 内置 protoc 封装（编译 .proto → FileDescriptorSet）
 └── ui/
     ├── PacketCaptureScreen.kt             # 主屏幕 Composable（布局骨架与对话框）
     ├── PacketCaptureViewModel.kt          # 状态容器（StateFlow + viewModelScope）
     └── components/
-        ├── CaptureToolbar.kt              # 工具栏（开始/停止/清空/过滤/CA 安装）
-        ├── PacketListPanel.kt             # 左侧请求列表（LazyColumn + 自动滚动）
-        └── PacketDetailPanel.kt           # 右侧详情面板（概览/请求头/请求体/响应头/响应体）
+        ├── CaptureToolbar.kt              # 工具栏（开始/停止/清空/过滤/CA/限速/Schema）
+        ├── HostTreePanel.kt               # 按 host 分组的树形列表
+        ├── PacketDetailPanel.kt           # 五标签详情面板（含 gRPC body 解码展示）
+        ├── ProtoSchemaDialog.kt           # Proto 路径管理对话框
+        └── ThrottleDialog.kt             # 限速配置对话框
 ```
 
 **外部集成**：`AppScreen.kt` 中注册路由 `AppScreen.PacketCapture`，通过 `PacketCaptureScreen()` 渲染本模块。
@@ -49,25 +73,31 @@ packetcapture/
 本模块严格遵循 [Clean Architecture 三层规范](../../../../../../../../../../docs/desktop_rules.md)，依赖方向自上而下，数据流向自下而上：
 
 ```
-┌─────────────────────────────────────────┐
-│               界面层 (UI)                │
-│  PacketCaptureScreen / ViewModel        │
-│  CaptureToolbar / PacketListPanel /     │
-│  PacketDetailPanel                      │
-├─────────────────────────────────────────┤
-│              数据层 (Data)               │
-│  PacketCaptureRepository（接口边界）     │
-│  PacketCaptureRepositoryImpl            │
-│  ├── MitmProxyServer                    │
-│  │   ├── ProxyFrontendHandler           │
-│  │   │   ├── HttpsMitmHandler           │
-│  │   │   └── BackendResponseHandler     │
-│  └── CertificateAuthority              │
-├─────────────────────────────────────────┤
-│              模型层 (Model)              │
-│  CapturedPacket / CaptureState          │
-│  CaptureStatus（被所有层共享）           │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                        界面层 (UI)                           │
+│  PacketCaptureScreen / ViewModel                            │
+│  CaptureToolbar / HostTreePanel / PacketListPanel /         │
+│  PacketDetailPanel / ThrottleDialog / ProtoSchemaDialog     │
+├─────────────────────────────────────────────────────────────┤
+│                       数据层 (Data)                          │
+│  PacketCaptureRepository（接口边界）                         │
+│  PacketCaptureRepositoryImpl                                │
+│  ├── MitmProxyDataSource（Netty 服务器 + 限速）              │
+│  │   └── mitm/                                              │
+│  │       ├── ProxyFrontendHandler                           │
+│  │       │   ├── protocol/Http1MitmSession                  │
+│  │       │   │   ├── HttpsMitmHandler                       │
+│  │       │   │   └── BackendResponseHandler                 │
+│  │       │   └── protocol/Http2MitmSession                  │
+│  │       │       ├── Http2MitmHandler                       │
+│  │       │       └── BackendChannelManager                  │
+│  │       └── NettyExtensions                                │
+│  └── cert/CertificateAuthority                              │
+├─────────────────────────────────────────────────────────────┤
+│                      模型层 (Model)                          │
+│  CapturedPacket / CaptureState / ThrottleConfig / ProtoPath │
+│  （被所有层共享，不可变）                                    │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 > 本模块无 Domain 层（无需 UseCase），`Repository` 直接作为 `ViewModel` 的下层依赖。
@@ -80,132 +110,238 @@ packetcapture/
 
 | 类 | 职责 |
 |---|---|
-| `CapturedPacket` | 单条抓包记录，包含请求（method、headers、body）与响应（statusCode、headers、body、durationMs）字段；不可变 `data class`，仅暴露计算属性（`url`、`isComplete`、`statusText`、`requestBodyAsText()`等）；以 `id` 作为标识符 |
-| `CaptureState` | UI 层的单一状态源，聚合 `status`、`port`、`packets`、`selectedPacketId`、`filterText` 等字段；`filteredPackets` 与 `selectedPacket` 为在 model 层计算的派生属性，避免 ViewModel 和 UI 层重复逻辑 |
-| `CaptureStatus` | `STOPPED / RUNNING / ERROR` 三态枚举 |
+| `CapturedPacket` | 单条抓包记录；`sealed interface` 含 `Http`（明文/TLS）与 `Grpc` 两个子类型；不可变 `data class`，含 `url`、`isComplete` 等计算属性 |
+| `CaptureState` | UI 单一状态源，聚合 `status`、`port`、`packets`、`selectedPacketId`、`filterText`、`protoPath`、`throttleConfig` 等字段；`filteredPackets`、`groupedByHost` 等为派生属性 |
+| `ThrottleConfig` | 网络限速配置；`ThrottlePreset` 枚举对应 5G/4G/3G/2G/自定义档位；`effectiveDownloadBps`/`effectiveUploadBps` 返回对应的 Netty 字节速率 |
+| `ProtoPath` | 用户配置的 `.proto` 文件路径，`@Serializable data class`，持久化至 `{CACHE_HOME}/proto_paths.json` |
 
 ### 4.2 数据层 (`data/`)
 
 #### Repository
 
-- **`PacketCaptureRepository`**（接口）：声明 `startCapture(port): Flow<CapturedPacket>`、`stopCapture()`、`installCaToDevice()`、`getDeviceProxy()`、`getCaCertPath()` 五个合约。`ViewModel` 仅依赖接口，便于测试替换。
+- **`PacketCaptureRepository`**（接口）：声明 `startCapture(port): Flow<CapturedPacket>`、`stopCapture()`、`installCaToDevice()`、`getDeviceProxy()`、`getCaCertPath()`、`updateThrottle(config)` 六个合约。`ViewModel` 仅依赖接口，便于测试替换。
 - **`PacketCaptureRepositoryImpl`**（实现）：
   - 通过 `callbackFlow` 桥接 Netty 回调与 Kotlin 协程。
-  - 持有 `MitmProxyServer` 引用，负责生命周期管理（`start` / `stop`）。
+  - 持有 `MitmProxyDataSource` 引用，负责生命周期管理（`start` / `stop`）与限速转发。
   - 通过注入的 `ProxyRepository` 读取当前设备代理配置。
-  - 通过 `adb push` + `CertificateAuthority` 完成 CA 证书推送。
+  - 通过 `adb push` + `CertificateAuthority.getCaCertFile()` 完成 CA 证书推送。
 
-#### Source
+#### DataSource (`source/`)
 
 | 类 | 职责 |
 |---|---|
-| `CertificateAuthority` | **单例**。CA 证书持久化到 `{CACHE_HOME}/ca/`（初次启动自动生成，10 年有效期）；按 host 动态签发叶子证书（1 年有效期）并缓存到 `ConcurrentHashMap<String, SslContext>`；依赖 BouncyCastle |
-| `MitmProxyServer` | Netty `ServerBootstrap` 封装，管理 `bossGroup` / `workerGroup` 生命周期；以 `AtomicLong` 生成全局单调递增的 packet id；最大请求体限制 **10 MB** |
-| `ProxyFrontendHandler` | 区分 `CONNECT` 与普通 HTTP 请求并路由：HTTP 直接透明转发并捕获；CONNECT 则执行完整 MITM 建立流程（见第 5 节） |
-| `HttpsMitmHandler` | HTTPS MITM 请求侧，将请求转发至后端并记录到 `ArrayDeque<PendingRequest>`（FIFO 队列维持请求顺序） |
-| `BackendResponseHandler` | HTTPS MITM 响应侧，从 `PendingRequest` 队列头部弹出对应请求，组装完整 `CapturedPacket` 并回调 |
+| `MitmProxyDataSource` | Netty `ServerBootstrap` 封装；管理 `bossGroup`/`workerGroup`/`scope` 生命周期；以 `AtomicLong` 生成全局单调递增 packet id；持有 `GlobalTrafficShapingHandler` 实例并通过 `updateThrottle()` 动态调整限速 |
+
+#### MITM Pipeline (`source/mitm/`)
+
+| 类/文件 | 职责 |
+|---|---|
+| `ProxyFrontendHandler` | 前端入站处理器；区分 `PlainHttp`/`ConnectTunnel` 并路由；CONNECT 路径在协程中顺序执行双向 TLS 握手、ALPN 检测后委托 Session 类装配 MITM 管道 |
+| `HttpsMitmHandler` | HTTP/1.1 请求侧；将请求元数据压入 `ArrayDeque<PendingRequest>` 后转发后端；`isGrpc` 标记在入队时由 `GrpcDetector` 赋值 |
+| `BackendResponseHandler` | HTTP/1.1 响应侧；流式接收（不依赖 `HttpObjectAggregator`）；实时转发前端；最多缓存 1 MB 响应体用于 UI 展示 |
+| `Http2MitmHandler` | 提供 `addHttp2BackendCodec()` 和 `addHttp2FrontendPipeline()` 两个包级函数；按流配对请求/响应；支持 gRPC server-streaming 实时转发 |
+| `BackendChannelManager` | 管理单条 HTTP/2 后端连接；GOAWAY 后自动重连；并发重连保护（`pendingActions` 队列），所有方法须在同一 EventLoop 线程调用 |
+| `NettyExtensions` | Netty `ChannelFuture`/`Future<Channel>` → Kotlin `suspend` 桥接：`awaitChannel()`、`awaitWrite(onSuccess)`、`awaitHandshake(onSuccess)`；`onSuccess` 在 EventLoop 线程同步执行，消除 pipeline 操作的竞争窗口 |
+
+#### CA 证书管理 (`source/cert/`)
+
+| 类 | 职责 |
+|---|---|
+| `CertificateAuthority` | **单例**。CA 证书持久化到 `{CACHE_HOME}/ca/`（首次启动自动生成，10 年有效期）；按 host 动态签发叶子证书（1 年有效期）；`getSslContextFor(host, supportH2)` 按 `host|h1`/`host|h2` 缓存至 `ConcurrentHashMap<String, SslContext>`，`supportH2` 参数控制前端 ALPN 广播范围，须与后端协商结果一致以避免 FRAME_SIZE_ERROR |
+
+#### 协议检测 (`source/protocol/`)
+
+| 类 | 职责 |
+|---|---|
+| `ProtocolDetector` | 两阶段纯函数检测：`detect()` 从 HTTP 请求判断 `PlainHttp`/`ConnectTunnel`；`detectMitm()` 从双端 ALPN 判断 `Http1`/`Http2`；无副作用，可独立单测 |
+| `InboundRequest` | 第一阶段结果 `sealed interface`（`PlainHttp` 含 host/port/path/isGrpc，`ConnectTunnel` 含 host/port） |
+| `MitmProtocol` | 第二阶段结果 `sealed interface`（`Http1`/`Http2` data object） |
+| `Http1MitmSession` | HTTP/1.1 MITM 会话封装；`install()` 内聚创建 `ArrayDeque<PendingRequest>` 并一次性装配前端 `HttpsMitmHandler` + 后端 `BackendResponseHandler` |
+| `Http2MitmSession` | HTTP/2 MITM 会话封装；`install()` 调用 `addHttp2FrontendPipeline()` 装配前端管道 |
+
+#### gRPC 解码 (`source/grpc/`)
+
+| 类 | 职责 |
+|---|---|
+| `GrpcDetector` | 根据 `Content-Type: application/grpc*` 判断是否为 gRPC 请求；纯函数，不修改流量 |
+| `GrpcBodyDecoder` | 解码门面；优先尝试 `ProtobufSchemaRegistry` schema-based 解析，降级至 `ProtobufSchemalessDecoder` |
+| `ProtobufSchemaRegistry` | 基于用户 `.proto` 文件构建 Schema；调用 `EmbeddedProtoc` 编译；维护 gRPC 方法→消息类型映射；使用 `DynamicMessage` + `JsonFormat` 解码为 JSON |
+| `ProtobufSchemalessDecoder` | 无 Schema 启发式解析；剥离 gRPC 帧头（5 字节）后对 Protobuf wire format 进行字段级拆解 |
+| `EmbeddedProtoc` | 内置 protoc 二进制封装；从 appResources 解析路径，通过 `ProcessBuilder` 编译 `.proto` 为 `FileDescriptorSet` |
 
 ### 4.3 界面层 (`ui/`)
 
 | 类 | 职责 |
 |---|---|
-| `PacketCaptureViewModel` | 持有 `MutableStateFlow<CaptureState>`；`startCapture()` 在 `Dispatchers.IO` 上收集 `Flow<CapturedPacket>` 并 `update` 状态；监听 `Context.stream` 以响应设备切换并刷新代理显示；`onCleared()` 确保代理服务器随生命周期停止 |
-| `PacketCaptureScreen` | 顶层骨架 Composable：`Column( CaptureToolbar / Row( PacketListPanel + VerticalDivider + PacketDetailPanel | EmptyDetailPanel ) )`；托管错误对话框与 CA 安装引导对话框 |
-| `CaptureToolbar` | 状态驱动的「开始」/「停止」按钮（颜色随 `CaptureStatus` 变化）；搜索框过滤；「安装CA证书」入口 |
-| `PacketListPanel` | `LazyColumn` 实现虚拟滚动；新数据到来时自动 `animateScrollToItem` 至末尾；HTTP Method 与状态码均以语义色彩区分 |
-| `PacketDetailPanel` | `ScrollableTabRow` 五标签页（概览 / 请求头 / 请求体 / 响应头 / 响应体）；Body 标签自动检测 `Content-Type` 进行 JSON 美化展示（`kotlinx.serialization`）；双向滚动支持 |
+| `PacketCaptureViewModel` | 持有 `MutableStateFlow<CaptureState>`；`startCapture()` 在 `Dispatchers.IO` 上收集 `Flow<CapturedPacket>`；管理 Proto Schema 持久化（读写 `proto_paths.json`）；`onCleared()` 确保代理随生命周期停止 |
+| `PacketCaptureScreen` | 顶层骨架 Composable：`CaptureToolbar` + `Row(HostTreePanel + PacketListPanel + PacketDetailPanel)`；托管 `ThrottleDialog`、`ProtoSchemaDialog`、CA 安装引导对话框 |
+| `CaptureToolbar` | 状态驱动的「开始」/「停止」按钮；搜索框；CA 安装、限速、Proto Schema 入口 |
+| `HostTreePanel` | 按 host 分组的树形列表，支持展开/收起 |
+| `PacketListPanel` | `LazyColumn` 虚拟滚动；新数据到来时自动 `animateScrollToItem` 至末尾；HTTP Method 与状态码以语义色彩区分 |
+| `PacketDetailPanel` | `ScrollableTabRow` 五标签页（概览/请求头/请求体/响应头/响应体）；gRPC 包体通过 `GrpcBodyDecoder` 解码展示；Body 自动检测 `Content-Type` 进行 JSON 美化 |
+| `ThrottleDialog` | 限速配置对话框；展示预设档位（5G/4G/3G/2G）与自定义输入 |
+| `ProtoSchemaDialog` | `.proto` 路径管理对话框；增删路径后触发 `ProtobufSchemaRegistry` 重新编译 |
 
 ---
 
-## 5. HTTPS MITM 核心流程
+## 5. HTTPS/HTTP2 MITM 核心流程
 
-### 5.1 CONNECT 握手与管道建立
+### 5.1 CONNECT 握手与管道建立（协程化）
 
 ```
-客户端发送 CONNECT {host}:443 HTTP/1.1
+客户端发送 CONNECT {host}:{port} HTTP/1.1
          │
          ▼
-ProxyFrontendHandler.handleConnect()
+ProxyFrontendHandler.handleConnect()  [CoroutineScope.launch]
          │
-         ├─ 1. 连接真实后端（TCP + TLS，InsecureTrustManagerFactory）
+         ├─ 1. TCP 连接后端（Bootstrap.connect().awaitChannel()）
          │
-         ├─ 2. 后端 TLS 握手成功后向客户端回复 200 Connection Established
+         ├─ 2. 后端 TLS 握手（backendSsl.handshakeFuture().awaitHandshake {
+         │      onSuccess 内同步执行：读取 ALPN，若为 h2 立即 addHttp2BackendCodec()
+         │   }）
          │
-         ├─ 3. 移除前端 HTTP 编解码器，注入 CertificateAuthority 为 {host}
-         │      签发的 SslContext（伪造证书）
+         ├─ 3. 向客户端回复 200 Connection Established（writeAndFlush().awaitWrite {
+         │      onSuccess 内同步执行：清除前端 HTTP codec，注入前端 SslContext
+         │   }）—— 原子操作，消除管道空窗期
          │
-         ├─ 4. 前端 TLS 握手成功（客户端需已安装自签 CA）
+         ├─ 4. 前端 TLS 握手（frontendSsl.handshakeFuture().awaitHandshake {
+         │      onSuccess 内同步执行：ProtocolDetector.detectMitm() 判断协议
+         │      → Http1：Http1MitmSession.install()
+         │      → Http2：BackendChannelManager.donateChannel() + Http2MitmSession.install()
+         │      → 将 trafficShapingHandler 插入 pipeline（限速生效）
+         │   }）
          │
-         └─ 5. 调用 setupMitmPipeline() 完成双向管道建立
+         └─ 管道就绪，后续流量由对应 Session 管理
 ```
 
-### 5.2 MITM 管道结构（CONNECT 成功后）
+> **时序关键**：`addHttp2BackendCodec()` 必须在后端握手完成后**立即**在 EventLoop 线程执行，
+> 否则服务端初始 SETTINGS 帧在 codec 就位前到达，导致 `First received frame was not SETTINGS`。
+
+### 5.2 HTTP/1.1 MITM 管道结构
 
 ```
 [客户端] ←── frontendChannel ──→ [ProxyServer]
   Pipeline:
-    frontendSsl          ← CertificateAuthority 动态叶子证书
+    frontendSsl            ← CertificateAuthority 动态叶子证书（含 ALPN h1/h2）
+    trafficShaping         ← GlobalTrafficShapingHandler（限速，握手后插入）
     httpServerCodecMitm
     httpAggregatorMitm
-    HttpsMitmHandler     ← 记录请求到 ArrayDeque<PendingRequest>，转发至后端
+    HttpsMitmHandler       ← 记录请求到 ArrayDeque<PendingRequest>，转发至后端
 
 [ProxyServer] ←── backendChannel ──→ [真实服务器]
   Pipeline:
-    backendSsl           ← InsecureTrustManagerFactory
-    httpClientCodec
-    httpAggregatorBackend
+    backendSsl             ← InsecureTrustManagerFactory
+    httpClientCodec        ← 流式（无 HttpObjectAggregator，支持任意大小响应）
     BackendResponseHandler ← 从 ArrayDeque 弹出请求，组装 CapturedPacket 并回调
 
-共享状态：ArrayDeque<PendingRequest>（FIFO，按序关联请求与响应）
+共享状态：ArrayDeque<PendingRequest>（FIFO，HTTPS 下一条连接一般只有一个在途请求）
 ```
 
-### 5.3 运行时数据流
+### 5.3 HTTP/2 / gRPC MITM 管道结构
+
+```
+[客户端] ←── frontendChannel ──→ [ProxyServer]
+  Pipeline:
+    frontendSsl
+    trafficShaping
+    Http2FrameCodec (server)   ← 握手完成后由 addHttp2FrontendPipeline() 装配
+    Http2MultiplexHandler
+      └─ [每条流] Http2FrontendStreamHandler
+           │  缓冲请求帧至 END_STREAM，通过 BackendChannelManager 获取后端连接
+           └─ [后端子流] Http2BackendStreamHandler
+                实时转发响应帧，END_STREAM 时触发 CapturedPacket 回调
+
+[ProxyServer] ←── backendChannel ──→ [真实服务器]
+  Pipeline:
+    backendSsl
+    Http2FrameCodec (client)   ← 后端握手完成后由 addHttp2BackendCodec() 提前装配
+    Http2MultiplexHandler (server push 静默丢弃)
+
+BackendChannelManager：GOAWAY 后自动重连，pendingActions 队列保证并发安全
+```
+
+### 5.4 运行时数据流
 
 ```
 用户点击「开始」
   → ViewModel.startCapture()
-  → Repository.startCapture(port) [callbackFlow]
-  → MitmProxyServer.start(port)   [Netty bind]
+  → Repository.startCapture(port)  [callbackFlow]
+  → MitmProxyDataSource.start(port)  [Netty bind]
       │
-      ├─ HTTP 请求到达
-      │    → ProxyFrontendHandler.handleHttp()
+      ├─ HTTP 明文请求到达
+      │    → ProxyFrontendHandler.handlePlainHttp()
       │    → 连接后端、透传、捕获响应
-      │    → CapturedPacket(scheme="http") → callbackFlow.trySend()
+      │    → CapturedPacket.Http(scheme="http") → callbackFlow.trySend()
       │
-      └─ HTTPS CONNECT 请求到达
-           → ProxyFrontendHandler.handleConnect()
-           → [MITM 管道建立，见 5.1/5.2]
-           → HttpsMitmHandler → BackendResponseHandler
-           → CapturedPacket(scheme="https") → callbackFlow.trySend()
+      └─ HTTPS/HTTP2/gRPC CONNECT 请求到达
+           → ProxyFrontendHandler.handleConnect()  [coroutine]
+           → [MITM 管道建立，见 5.1]
+           → Http1：HttpsMitmHandler → BackendResponseHandler
+           → Http2：Http2FrontendStreamHandler → Http2BackendStreamHandler
+           → CapturedPacket.Http/Grpc(scheme="https") → callbackFlow.trySend()
                 │
                 ▼
   ViewModel._uiState.update { packets + packet }
-  UI 列表实时追加并滚动至末尾
+  UI 列表实时追加，HostTreePanel / PacketListPanel 同步刷新
 ```
 
 ---
 
-## 6. 外部依赖
+## 6. gRPC Protobuf 解码
 
-| 依赖 | 用途 |
-|---|---|
-| **Netty** (`io.netty.*`) | HTTP/HTTPS 代理服务器、事件循环、Pipeline、SSL 处理 |
-| **BouncyCastle** (`org.bouncycastle.*`) | CA 证书与叶子证书动态生成、PEM 格式读写 |
-| **kotlinx.serialization.json** | 响应体 JSON 美化展示 |
-| `sophon.desktop.core.Shell.simpleShell` | `adb push` 推送 CA 证书到设备 |
-| `sophon.desktop.feature.proxy.data.repository.ProxyRepository` | 读取当前设备代理配置 |
-| `sophon.desktop.core.Context.stream` | 监听设备切换事件，刷新代理信息显示 |
-| `sophon.desktop.core.CACHE_HOME` | CA 证书文件的持久化目录（`{CACHE_HOME}/ca/`） |
+UI 层 `PacketDetailPanel` 在展示 gRPC 包体时调用 `GrpcBodyDecoder.decode()`：
+
+```
+GrpcBodyDecoder.decode(grpcBody, grpcPath)
+  │
+  ├─ ProtobufSchemaRegistry.decode()  （有 Schema 时）
+  │    ← 用户通过 ProtoSchemaDialog 添加 .proto 路径
+  │    ← EmbeddedProtoc 编译 .proto → FileDescriptorSet
+  │    ← DynamicMessage + JsonFormat 解码为 JSON
+  │
+  └─ ProtobufSchemalessDecoder.decode()  （无 Schema 降级）
+       ← 剥离 5 字节 gRPC 帧头
+       ← Protobuf wire format 启发式字段级拆解
+```
+
+Proto Schema 持久化：`ProtoPath` 列表存储于 `{CACHE_HOME}/proto_paths.json`，由 `ViewModel` 在启动时加载并传入 `ProtobufSchemaRegistry`。
 
 ---
 
-## 7. 设计约束与注意事项
+## 7. 网络限速
+
+限速通过 Netty `GlobalTrafficShapingHandler` 实现，**在 TLS 握手完成后才插入 pipeline**，作用于解密后的明文流：
+
+- 初始化时由 `MitmProxyDataSource.start()` 创建，绑定至 `workerGroup`（500ms 统计窗口，15s 最大延迟）。
+- `ProxyFrontendHandler` 在 MITM 管道安装完成后，将其插入 `frontendSsl` 之后，确保不干扰握手阶段。
+- `updateThrottle(config)` 在运行时直接调用 `GlobalTrafficShapingHandler.configure()`，无需重启代理。
+- 代理未运行时的配置变更会在下次 `start()` 时应用。
+
+---
+
+## 8. 外部依赖
+
+| 依赖 | 用途 |
+|---|---|
+| **Netty** (`io.netty.*`) | HTTP/1.1 + HTTP/2 代理服务器、事件循环、Pipeline、SSL/ALPN 处理、限速 |
+| **BouncyCastle** (`org.bouncycastle.*`) | CA 证书与叶子证书动态生成、PEM 格式读写 |
+| **Protobuf** (`com.google.protobuf`) | `DynamicMessage`、`Descriptor`、`JsonFormat`（gRPC schema-based 解码） |
+| **kotlinx.serialization.json** | 响应体 JSON 美化展示；`ProtoPath` 持久化 |
+| `sophon.desktop.core.Shell.simpleShell` | `adb push` 推送 CA 证书到设备 |
+| `sophon.desktop.feature.proxy.data.repository.ProxyRepository` | 读取当前设备代理配置 |
+| `sophon.desktop.core.CACHE_HOME` | CA 证书（`{CACHE_HOME}/ca/`）与 Proto 路径（`{CACHE_HOME}/proto_paths.json`）持久化目录 |
+
+---
+
+## 9. 设计约束与注意事项
 
 | 约束 | 说明 |
 |---|---|
-| 最大请求体 10 MB | `HttpObjectAggregator(10 * 1024 * 1024)`，超出时 Netty 返回 `413 Request Entity Too Large` |
+| 最大请求体 10 MB | 前端 `HttpObjectAggregator(10 MB)`；后端响应侧流式接收，无聚合限制，UI 展示最多缓存 1 MB |
 | CA 证书有效期 10 年 | 首次启动生成，持久化复用；如需更新需手动删除 `{CACHE_HOME}/ca/` 目录 |
-| 叶子证书有效期 1 年 | 按 host 缓存在内存 `ConcurrentHashMap`，重启后重新生成 |
-| 未暴露端口编辑 UI | `ViewModel.updatePort()` 与 `Repository.getCaCertPath()` 已实现但当前 UI 未提供入口 |
-| HTTPS 抓包前提 | 客户端（如 Android 设备）必须安装并信任自签 CA 证书，否则前端 TLS 握手失败，连接被静默关闭 |
-| 线程安全 | Netty pipeline 回调在 EventLoop 线程执行，`callbackFlow.trySend()` 是线程安全的；`ConcurrentHashMap` 保护证书缓存 |
+| 叶子证书有效期 1 年 | 按 `host|h1`/`host|h2` 缓存在内存，重启后重新生成 |
+| HTTP/2 ALPN 一致性 | 前端 `SslContext.supportH2` 须与后端 ALPN 结果一致，否则触发 FRAME_SIZE_ERROR |
+| gRPC 流式支持限制 | 当前实现缓冲请求帧至 END_STREAM 再转发，客户端流式/双向流式调用在 END_STREAM 前阻塞（已知限制） |
+| HTTPS 抓包前提 | 客户端（如 Android 设备）必须安装并信任自签 CA 证书，否则前端 TLS 握手失败 |
+| EventLoop 线程约束 | `BackendChannelManager` 的所有方法须在同一 EventLoop 线程调用（`withChannel`/`donateChannel`）；`NettyExtensions` 的 `onSuccess` 回调在 EventLoop 线程同步执行，严禁阻塞操作 |
+| 线程安全 | Netty pipeline 回调在 EventLoop 线程执行；`callbackFlow.trySend()` 是线程安全的；`ConcurrentHashMap` 保护 `SslContext` 证书缓存 |
