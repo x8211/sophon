@@ -3,17 +3,22 @@ package sophon.desktop.feature.packetcapture.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
@@ -35,27 +40,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import sophon.desktop.feature.packetcapture.data.source.grpc.GrpcBodyDecoder
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
+import sophon.desktop.feature.packetcapture.model.DecodedBody
+import sophon.desktop.feature.packetcapture.model.FileDownloadInfo
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
-private val prettyJson = Json { prettyPrint = true }
-
 private fun formatJsonOrRaw(text: String?): String {
     if (text.isNullOrBlank()) return "(空)"
-    return try {
-        val element = Json.parseToJsonElement(text)
-        prettyJson.encodeToString(JsonElement.serializer(), element)
-    } catch (_: Exception) {
-        text
-    }
+    return text
 }
 
 private fun isJson(contentType: String?): Boolean =
@@ -97,6 +95,9 @@ private val jsonMonoStyle
 @Composable
 fun PacketDetailPanel(
     packet: CapturedPacket,
+    decodedBody: DecodedBody?,
+    isDecodingBody: Boolean,
+    onSaveFile: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember(packet.id) { mutableIntStateOf(1) }
@@ -119,7 +120,12 @@ fun PacketDetailPanel(
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when (selectedTab) {
                 0 -> OverviewTab(packet)
-                1 -> ContentsTab(packet)
+                1 -> ContentsTab(
+                    packet = packet,
+                    decoded = decodedBody,
+                    isDecoding = isDecodingBody,
+                    onSaveFile = onSaveFile,
+                )
             }
         }
     }
@@ -246,40 +252,29 @@ private fun OverviewRow(label: String, value: String, valueColor: Color = Color(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ContentsTab(packet: CapturedPacket) {
+private fun ContentsTab(
+    packet: CapturedPacket,
+    decoded: DecodedBody?,
+    isDecoding: Boolean,
+    onSaveFile: () -> Unit,
+) {
     val isGrpc = packet is CapturedPacket.Grpc
 
-    // HTTP 响应子 Tab：响应头 / 文本 / JSON / JSON Text
-    // gRPC 响应子 Tab：响应头 / Proto / 文本
-    val responseTabs = if (isGrpc) {
-        listOf("响应头", "Proto", "文本")
-    } else {
-        listOf("响应头", "文本", "JSON", "JSON Text")
-    }
+    val responseTabs = if (isGrpc) listOf("响应头", "Proto", "文本")
+    else listOf("响应头", "文本", "JSON", "JSON Text")
+
     val defaultResponseTab = if (isGrpc) 1 else {
         val ct = packet.responseHeaders["Content-Type"] ?: packet.responseHeaders["content-type"]
         if (isJson(ct)) 2 else 1
     }
     var responseTab by remember(packet.id) { mutableIntStateOf(defaultResponseTab) }
 
-    // gRPC Proto 解析（懒加载，remember 缓存避免重复计算）
-    val reqDecoded = if (isGrpc && packet.requestBody != null) {
-        remember(packet.id) {
-            GrpcBodyDecoder.decode(packet.requestBody!!, packet.path, isRequest = true)
-        }
-    } else null
-    val respDecoded = if (isGrpc && packet.responseBody != null) {
-        remember(packet.id) {
-            GrpcBodyDecoder.decode(packet.responseBody!!, packet.path, isRequest = false)
-        }
-    } else null
-
     Column(modifier = Modifier.fillMaxSize().background(Color(0xFFFAFAFA))) {
 
         // ── 请求区（上，weight=0.4）──────────────────────────────────────────
         Column(modifier = Modifier.weight(0.4f).fillMaxWidth()) {
             if (isGrpc) {
-                // gRPC：标签栏 + Schema 状态标注
+                val grpcReqDecoded = decoded?.grpcRequest
                 Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp),
@@ -291,9 +286,9 @@ private fun ContentsTab(packet: CapturedPacket) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f)
                         )
-                        if (reqDecoded != null) {
-                            val schemaLabel = if (reqDecoded.isSchemaApplied) "Schema" else "无 Schema"
-                            val schemaColor = if (reqDecoded.isSchemaApplied) Color(0xFF4CAF50) else Color(0xFF9E9E9E)
+                        if (grpcReqDecoded != null) {
+                            val schemaLabel = if (grpcReqDecoded.isSchemaApplied) "Schema" else "无 Schema"
+                            val schemaColor = if (grpcReqDecoded.isSchemaApplied) Color(0xFF4CAF50) else Color(0xFF9E9E9E)
                             Text(
                                 text = schemaLabel,
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
@@ -303,13 +298,9 @@ private fun ContentsTab(packet: CapturedPacket) {
                     }
                 }
                 HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                if (reqDecoded != null) {
-                    BodySection(reqDecoded.body, formatAsJson = reqDecoded.isSchemaApplied)
-                } else {
-                    BodySection(null, formatAsJson = false)
-                }
+                // 使用后台预计算的 formattedBody（schema 已应用时）或原始 body
+                BodySection(grpcReqDecoded?.formattedBody ?: grpcReqDecoded?.body, formatAsJson = false)
             } else {
-                // HTTP：请求头 / Query 参数（有 ? 时）/ 请求体 子 Tab
                 val queryParams = remember(packet.id) { parseQueryParams(packet.path) }
                 val requestTabs = remember(packet.id) {
                     buildList {
@@ -337,47 +328,68 @@ private fun ContentsTab(packet: CapturedPacket) {
                 when (requestTabs.getOrNull(requestTab)) {
                     "请求头" -> RequestHeadersSection(packet.requestHeaders)
                     "Query 参数" -> QueryParamsSection(queryParams)
-                    else -> RequestBodySection(packet)
+                    // 传入后台解码的请求体文本，避免在主线程解压
+                    else -> RequestBodySection(packet, decoded?.requestText, decoded?.requestJson)
                 }
             }
         }
 
         HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ── 响应子 Tab 标签行 ─────────────────────────────────────────────────
-        ScrollableTabRow(
-            selectedTabIndex = responseTab,
-            edgePadding = 0.dp,
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            divider = {}
-        ) {
-            responseTabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = responseTab == index,
-                    onClick = { responseTab = index },
-                    text = { Text(title, style = MaterialTheme.typography.labelSmall) }
+        // ── 响应区（下，weight=0.6）──────────────────────────────────────────
+        Column(modifier = Modifier.weight(0.6f).fillMaxWidth()) {
+            when {
+                isDecoding -> LoadingSection(modifier = Modifier.fillMaxSize())
+                decoded?.isFileDownload == true -> FileDownloadSection(
+                    info = decoded.fileInfo!!,
+                    bodyAvailable = decoded.bodyAvailable,
+                    onSave = onSaveFile,
+                    modifier = Modifier.fillMaxSize(),
                 )
-            }
-        }
-
-        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-
-        // ── 响应内容区（下，weight=0.6）────────────────────────────────────────
-        Box(modifier = Modifier.weight(0.6f).fillMaxWidth()) {
-            if (isGrpc) {
-                when (responseTab) {
-                    0 -> ResponseHeadersSection(packet.responseHeaders)
-                    1 -> BodySection(respDecoded?.body, formatAsJson = respDecoded?.isSchemaApplied == true)
-                    2 -> BodySection(packet.responseBodyAsText(), formatAsJson = false)
-                    else -> BodySection(null, formatAsJson = false)
-                }
-            } else {
-                when (responseTab) {
-                    0 -> ResponseHeadersSection(packet.responseHeaders)
-                    1 -> BodySection(packet.responseBodyAsText(), formatAsJson = false)       // 文本：原始字符串
-                    2 -> JsonTreeView(packet.responseBodyAsText())                            // JSON：折叠树视图
-                    3 -> BodySection(packet.responseBodyAsText(), formatAsJson = true)        // JSON Text：格式化展示，不可折叠
-                    else -> BodySection(null, formatAsJson = false)
+                else -> {
+                    ScrollableTabRow(
+                        selectedTabIndex = responseTab,
+                        edgePadding = 0.dp,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        divider = {}
+                    ) {
+                        responseTabs.forEachIndexed { index, title ->
+                            Tab(
+                                selected = responseTab == index,
+                                onClick = { responseTab = index },
+                                text = { Text(title, style = MaterialTheme.typography.labelSmall) }
+                            )
+                        }
+                    }
+                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        if (isGrpc) {
+                            val grpcRespDecoded = decoded?.grpcResponse
+                            when (responseTab) {
+                                0 -> ResponseHeadersSection(packet.responseHeaders)
+                                // 使用后台预计算的 formattedBody（schema 已应用时）或原始 body
+                                1 -> BodySection(grpcRespDecoded?.formattedBody ?: grpcRespDecoded?.body, formatAsJson = false)
+                                2 -> BodySection(decoded?.responseText, formatAsJson = false)
+                                else -> BodySection(null, formatAsJson = false)
+                            }
+                        } else {
+                            val respText = decoded?.responseText
+                            val respJson = decoded?.responseJson
+                            val isLargeBody = (respText?.length ?: 0) > LARGE_BODY_LIMIT
+                            when (responseTab) {
+                                0 -> ResponseHeadersSection(packet.responseHeaders)
+                                1 -> BodySection(respText, formatAsJson = false)
+                                2 -> if (isLargeBody) {
+                                    LargeBodyFallback(respText, "响应体超出 ${LARGE_BODY_LIMIT / 1000}KB，JSON 树视图已跳过")
+                                } else {
+                                    JsonTreeView(respJson)
+                                }
+                                // JSON Text：直接用后台预计算的 pretty-print 文本，无需主线程 JSON 解析
+                                3 -> BodySection(decoded?.responsePrettyJson ?: respText, formatAsJson = false)
+                                else -> BodySection(null, formatAsJson = false)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -417,15 +429,17 @@ private fun RequestHeadersSection(headers: Map<String, String>) {
 }
 
 /**
- * 请求体展示区域，与请求头共用相同的容器样式。
- * - 无内容：显示 "(空)" 占位
- * - JSON body：折叠树视图
- * - 其他：等宽纯文本
+ * 请求体展示区域。
+ * - [requestText]：后台线程预解码的请求体文本（已解压），避免在主线程做 gzip/deflate 解压。
+ * - [requestJson]：后台预解析的 [JsonElement]，content-type 为 JSON 时展示折叠树。
  */
 @Composable
-private fun RequestBodySection(packet: CapturedPacket) {
-    val reqBody = packet.requestBodyAsText()
-    if (reqBody.isNullOrEmpty()) {
+private fun RequestBodySection(
+    packet: CapturedPacket,
+    requestText: String?,
+    requestJson: JsonElement?,
+) {
+    if (requestText.isNullOrEmpty()) {
         Box(
             Modifier.fillMaxSize().background(Color(0xFFFAFAFA)),
             contentAlignment = Alignment.Center
@@ -436,10 +450,10 @@ private fun RequestBodySection(packet: CapturedPacket) {
     }
     val reqContentType = packet.requestHeaders["content-type"]
         ?: packet.requestHeaders["Content-Type"]
-    if (isJson(reqContentType)) {
-        JsonTreeView(reqBody)
+    if (isJson(reqContentType) && requestJson != null) {
+        JsonTreeView(requestJson)
     } else {
-        BodySection(reqBody, formatAsJson = false)
+        BodySection(requestText, formatAsJson = false)
     }
 }
 
@@ -534,23 +548,143 @@ private fun BodySection(bodyText: String?, formatAsJson: Boolean) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// JSON 折叠树视图
+// 加载中 / 文件下载 / 超大 body 降级 组件
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun JsonTreeView(bodyText: String?) {
-    if (bodyText.isNullOrEmpty()) {
+private fun LoadingSection(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.background(Color(0xFFFAFAFA)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.height(8.dp))
+            Text("解码中…", style = MaterialTheme.typography.bodySmall, color = Color(0xFF9E9E9E))
+        }
+    }
+}
+
+@Composable
+private fun FileDownloadSection(
+    info: FileDownloadInfo,
+    bodyAvailable: Boolean,
+    onSave: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scrollState = rememberScrollState()
+    SelectionContainer {
+        Column(
+            modifier = modifier
+                .background(Color(0xFFFAFAFA))
+                .verticalScroll(scrollState)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+            Text(
+                text = "文件下载",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(16.dp))
+            FileInfoRow("文件名", info.fileName)
+            FileInfoRow("类型", info.contentType)
+            FileInfoRow(
+                "大小",
+                if (info.sizeBytes >= 0) "${info.formattedSize()}（${info.sizeBytes} 字节）" else "未知",
+            )
+            if (info.md5 != null) FileInfoRow("MD5", info.md5)
+            if (info.etag != null) FileInfoRow("ETag", info.etag)
+            if (info.lastModified != null) FileInfoRow("最后修改", info.lastModified)
+            Spacer(Modifier.height(20.dp))
+            if (bodyAvailable) {
+                Button(onClick = onSave) {
+                    Text("保存响应体到文件…")
+                }
+            } else {
+                Text(
+                    text = "响应体未完整捕获（文件已完整转发到设备端）",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF9E9E9E),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FileInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 11.sp),
+            color = Color(0xFF666666),
+            modifier = Modifier.width(72.dp)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 11.sp),
+            color = Color(0xFF1A1A1A),
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun LargeBodyFallback(text: String?, hint: String) {
+    val scrollState = rememberScrollState()
+    val hScroll = rememberScrollState()
+    Column(
+        modifier = Modifier.fillMaxSize().background(Color(0xFFFAFAFA)).padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = hint,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color(0xFFFF9800),
+            modifier = Modifier.padding(bottom = 6.dp)
+        )
+        SelectionContainer {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState)
+                    .horizontalScroll(hScroll)
+            ) {
+                Text(
+                    text = text ?: "(空)",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp
+                    ),
+                    color = Color(0xFF212121)
+                )
+            }
+        }
+    }
+}
+
+/** body 超过此字符数时跳过 JSON 树渲染，降级为纯文本。 */
+private const val LARGE_BODY_LIMIT = 200_000
+
+// ─────────────────────────────────────────────────────────────────────────────
+// JSON 折叠树视图
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * JSON 折叠树视图。
+ * [element] 由后台线程预解析传入，此函数不再在主线程做 JSON 解析。
+ */
+@Composable
+private fun JsonTreeView(element: JsonElement?) {
+    if (element == null) {
         Box(Modifier.fillMaxSize().background(Color(0xFFFAFAFA)), contentAlignment = Alignment.Center) {
             Text("(空)", color = Color(0xFF9E9E9E), style = MaterialTheme.typography.bodySmall)
         }
-        return
-    }
-    val rootElement = remember(bodyText) {
-        runCatching { Json.parseToJsonElement(bodyText) }.getOrNull()
-    }
-    // JSON 解析失败时降级为纯文本
-    if (rootElement == null) {
-        BodySection(bodyText, formatAsJson = false)
         return
     }
     SelectionContainer {
@@ -562,7 +696,7 @@ private fun JsonTreeView(bodyText: String?) {
                 .verticalScroll(scrollState)
                 .padding(12.dp)
         ) {
-            JsonNodeView(key = null, element = rootElement, depth = 0)
+            JsonNodeView(key = null, element = element, depth = 0)
         }
     }
 }
@@ -578,7 +712,8 @@ private fun JsonNodeView(key: String?, element: JsonElement, depth: Int) {
 
 @Composable
 private fun JsonObjectView(key: String?, obj: JsonObject, depth: Int) {
-    var expanded by remember { mutableStateOf(true) }
+    // 根节点（depth=0）默认展开；嵌套节点默认收起，减少初始渲染压力
+    var expanded by remember { mutableStateOf(depth == 0) }
     val startPadding = (depth * 16).dp
 
     // 标题行：可点击切换展开/收起
@@ -617,7 +752,8 @@ private fun JsonObjectView(key: String?, obj: JsonObject, depth: Int) {
 
 @Composable
 private fun JsonArrayView(key: String?, arr: JsonArray, depth: Int) {
-    var expanded by remember { mutableStateOf(true) }
+    // 根节点（depth=0）默认展开；嵌套节点默认收起，减少初始渲染压力
+    var expanded by remember { mutableStateOf(depth == 0) }
     val startPadding = (depth * 16).dp
 
     // 标题行：可点击切换展开/收起

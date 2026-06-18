@@ -28,6 +28,15 @@ data class CaptureState(
     val throttleConfig: ThrottleConfig = ThrottleConfig(),
     /** 是否显示限速配置对话框。 */
     val showThrottleDialog: Boolean = false,
+    /** 已在后台解码完成的包体内容，key 为 [CapturedPacket.id]。 */
+    val decodedBodies: Map<Long, DecodedBody> = emptyMap(),
+    /** true 表示当前选中包正在后台解码，界面应显示加载状态。 */
+    val isDecodingBody: Boolean = false,
+    /**
+     * 包 id → CapturedPacket 的快速索引，与 [packets] 同步维护。
+     * 用于 [selectedPacket] O(1) 查找，避免每次 O(n) find。
+     */
+    val packetIndex: Map<Long, CapturedPacket> = emptyMap(),
 ) {
     val isRunning: Boolean get() = status == CaptureStatus.RUNNING
 
@@ -44,6 +53,7 @@ data class CaptureState(
     val groupedPackets: Map<String, List<CapturedPacket>>
         get() = filteredPackets.groupBy { it.host }
 
+    /** O(1) 查找，依赖 [packetIndex]。 */
     val selectedPacket: CapturedPacket?
-        get() = selectedPacketId?.let { id -> packets.find { it.id == id } }
+        get() = selectedPacketId?.let { packetIndex[it] }
 }

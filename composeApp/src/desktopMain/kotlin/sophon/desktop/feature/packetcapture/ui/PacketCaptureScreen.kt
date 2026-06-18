@@ -71,6 +71,9 @@ fun PacketCaptureScreen(
             if (selectedPacket != null) {
                 PacketDetailPanel(
                     packet = selectedPacket,
+                    decodedBody = state.decodedBodies[selectedPacket.id],
+                    isDecodingBody = state.isDecodingBody,
+                    onSaveFile = { viewModel.saveResponseBodyToFile(selectedPacket) },
                     modifier = Modifier
                         .weight(0.6f)
                         .fillMaxHeight()

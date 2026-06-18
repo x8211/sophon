@@ -13,6 +13,8 @@ import io.netty.util.ReferenceCountUtil
 import sophon.desktop.feature.packetcapture.data.source.mitm.BackendResponseHandler.Companion.MAX_CAPTURE_BODY_BYTES
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.util.ArrayDeque
 
 /**
@@ -39,8 +41,27 @@ internal class BackendResponseHandler(
 ) : ChannelInboundHandlerAdapter() {
 
     private companion object {
-        /** 每个响应最多在内存中积累多少字节用于抓包界面展示。 */
+        /** 非文件下载响应在内存中最多积累多少字节用于 UI 展示。 */
         const val MAX_CAPTURE_BODY_BYTES = 1 * 1024 * 1024  // 1 MB
+
+        /**
+         * 检测响应头是否表示文件下载（与 [sophon.desktop.feature.packetcapture.model.isFileDownload] 保持一致）。
+         * 此处复用是因为 [CapturedPacket] 在响应头到达时尚未构建。
+         */
+        fun isFileDownloadHeaders(headers: Map<String, String>): Boolean {
+            val h = headers.entries.associateBy({ it.key.lowercase() }, { it.value })
+            if (h["content-disposition"]?.contains("attachment", ignoreCase = true) == true) return true
+            val ct = h["content-type"]?.lowercase()?.substringBefore(";")?.trim() ?: return false
+            val textTypes = listOf("text/", "application/json", "application/grpc", "application/xml")
+            if (textTypes.any { ct.startsWith(it) }) return false
+            val binaryPrefixes = listOf(
+                "application/zip", "application/gzip", "application/x-tar",
+                "application/pdf", "application/octet-stream",
+                "application/vnd.", "application/x-",
+                "image/", "audio/", "video/",
+            )
+            return binaryPrefixes.any { ct.startsWith(it) }
+        }
     }
 
     private var activePending: PendingRequest? = null
@@ -48,6 +69,10 @@ internal class BackendResponseHandler(
     private var activeRespHeaders: Map<String, String> = emptyMap()
     private val activeBodyCapture = ByteArrayOutputStream()
     private var capturingBody = true
+    /** 当前响应是否为文件下载——若是，则流式写入临时文件而非内存。 */
+    private var captureBodyToFile = false
+    private var responseBodyTempFile: File? = null
+    private var responseBodyFileStream: FileOutputStream? = null
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
         try {
@@ -66,22 +91,44 @@ internal class BackendResponseHandler(
         activeRespHeaders = resp.headers().entries().associate { it.key to it.value }
         activeBodyCapture.reset()
         capturingBody = true
+        // 检测文件下载：若是，则流式写入临时文件以保留完整响应体
+        captureBodyToFile = isFileDownloadHeaders(activeRespHeaders)
+        if (captureBodyToFile) {
+            runCatching {
+                val tmp = File.createTempFile("sophon_dl_", null).also { it.deleteOnExit() }
+                responseBodyTempFile = tmp
+                responseBodyFileStream = FileOutputStream(tmp)
+            }.onFailure {
+                // 创建临时文件失败时降级为内存截断模式
+                captureBodyToFile = false
+            }
+        }
         // 立即将响应头转发到前端，OkHttp 可同步开始读取响应状态与头部。
         frontendChannel.write(DefaultHttpResponse(resp.protocolVersion(), resp.status(), resp.headers()))
     }
 
     private fun onResponseContent(content: HttpContent) {
-        // 在内存中积累部分响应体用于抓包界面（超出上限后仅转发不保存）
         val buf = content.content()
-        if (capturingBody && buf.readableBytes() > 0) {
-            val remaining = MAX_CAPTURE_BODY_BYTES - activeBodyCapture.size()
-            if (remaining > 0) {
-                val len = minOf(buf.readableBytes(), remaining)
-                val bytes = ByteArray(len)
-                buf.getBytes(buf.readerIndex(), bytes)
-                activeBodyCapture.write(bytes)
-            } else {
-                capturingBody = false
+        val readableBytes = buf.readableBytes()
+        if (readableBytes > 0) {
+            if (captureBodyToFile) {
+                // 文件下载：将所有字节流式写入临时文件，不占用堆内存
+                runCatching {
+                    val bytes = ByteArray(readableBytes)
+                    buf.getBytes(buf.readerIndex(), bytes)
+                    responseBodyFileStream?.write(bytes)
+                }
+            } else if (capturingBody) {
+                // 普通响应：在内存中积累最多 MAX_CAPTURE_BODY_BYTES 字节
+                val remaining = MAX_CAPTURE_BODY_BYTES - activeBodyCapture.size()
+                if (remaining > 0) {
+                    val len = minOf(readableBytes, remaining)
+                    val bytes = ByteArray(len)
+                    buf.getBytes(buf.readerIndex(), bytes)
+                    activeBodyCapture.write(bytes)
+                } else {
+                    capturingBody = false
+                }
             }
         }
         // 立即将内容块转发到前端（retain 使 ByteBuf 在 finally-release 之后仍有效）
@@ -97,12 +144,28 @@ internal class BackendResponseHandler(
         val pending = activePending ?: return
         activePending = null
         val duration = (System.nanoTime() - pending.startNano) / 1_000_000
-        val responseBodyBytes = activeBodyCapture.toByteArray().takeIf { it.isNotEmpty() }
-        onPacketCaptured(buildPacket(pending, duration, responseBodyBytes, error))
+
+        // 关闭临时文件流，取出临时文件引用（出错时删除不完整文件）
+        responseBodyFileStream?.runCatching { close() }
+        responseBodyFileStream = null
+        val capturedFile = if (captureBodyToFile && error == null) {
+            responseBodyTempFile
+        } else {
+            responseBodyTempFile?.delete()
+            null
+        }
+        responseBodyTempFile = null
+        captureBodyToFile = false
+
+        val responseBodyBytes = if (capturedFile == null) {
+            activeBodyCapture.toByteArray().takeIf { it.isNotEmpty() }
+        } else null
+
+        onPacketCaptured(buildPacket(pending, duration, responseBodyBytes, capturedFile, error))
     }
 
     override fun channelInactive(ctx: ChannelHandlerContext) {
-        // 后端连接在响应传输途中关闭：补发带错误的抓包记录
+        // 后端连接在响应传输途中关闭：补发带错误的抓包记录（fireCapture 会清理临时文件）
         fireCapture(error = "Connection closed mid-response")
         // 已入队但从未开始的请求：同样补发错误记录
         drainPendingWithError("Connection closed")
@@ -120,7 +183,7 @@ internal class BackendResponseHandler(
     private fun drainPendingWithError(error: String) {
         while (pendingRequests.isNotEmpty()) {
             val pending = pendingRequests.pollFirst() ?: break
-            onPacketCaptured(buildPacket(pending, durationMs = 0, responseBodyBytes = null, error = error))
+            onPacketCaptured(buildPacket(pending, durationMs = 0, responseBodyBytes = null, responseBodyFile = null, error = error))
         }
     }
 
@@ -128,6 +191,7 @@ internal class BackendResponseHandler(
         pending: PendingRequest,
         durationMs: Long,
         responseBodyBytes: ByteArray?,
+        responseBodyFile: File?,
         error: String?,
     ): CapturedPacket = if (pending.isGrpc) {
         CapturedPacket.Grpc(
@@ -137,6 +201,7 @@ internal class BackendResponseHandler(
             statusCode = if (error == null) activeStatusCode else null,
             responseHeaders = activeRespHeaders, responseBody = responseBodyBytes,
             durationMs = durationMs, error = error,
+            responseBodyFile = responseBodyFile,
         )
     } else {
         CapturedPacket.Http(
@@ -146,6 +211,7 @@ internal class BackendResponseHandler(
             statusCode = if (error == null) activeStatusCode else null,
             responseHeaders = activeRespHeaders, responseBody = responseBodyBytes,
             durationMs = durationMs, error = error,
+            responseBodyFile = responseBodyFile,
         )
     }
 }
