@@ -1,5 +1,6 @@
 package sophon.desktop.feature.packetcapture.ui.components
 
+import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,18 +9,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -27,9 +27,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.painterResource
+import sophon.composeapp.generated.resources.Res
+import sophon.composeapp.generated.resources.ic_protobuf
 import sophon.desktop.feature.packetcapture.model.CaptureStatus
 import sophon.desktop.feature.packetcapture.model.ThrottleConfig
+import sophon.desktop.feature.packetcapture.model.ThrottlePreset
+import sophon.desktop.ui.theme.AppTheme
+import sophon.desktop.ui.theme.Dimens
 
 /**
  * 抓包工具栏，提供开始/停止、清空列表、CA 证书安装及限速配置的操作入口，
@@ -61,26 +68,32 @@ fun CaptureToolbar(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (status == CaptureStatus.RUNNING) {
-                Button(
+                FilledIconButton(
                     onClick = onStop,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
                     )
                 ) {
-                    Icon(Icons.Default.Stop, "停止", modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("停止", style = MaterialTheme.typography.labelMedium)
+                    Icon(
+                        Icons.Default.Stop,
+                        contentDescription = "停止",
+                        modifier = Modifier.size(Dimens.iconSizeSmall)
+                    )
                 }
             } else {
-                Button(
+                FilledIconButton(
                     onClick = onStart,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
                     )
                 ) {
-                    Icon(Icons.Default.PlayArrow, "开始", modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("开始", style = MaterialTheme.typography.labelMedium)
+                    Icon(
+                        Icons.Default.PlayArrow,
+                        contentDescription = "开始",
+                        modifier = Modifier.size(Dimens.iconSizeSmall)
+                    )
                 }
             }
 
@@ -88,6 +101,7 @@ fun CaptureToolbar(
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "清空",
+                    modifier = Modifier.size(Dimens.iconSizeSmall),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -105,7 +119,7 @@ fun CaptureToolbar(
                     Icon(
                         Icons.Default.NetworkCheck,
                         contentDescription = "限速",
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                 },
                 colors = FilterChipDefaults.filterChipColors(
@@ -115,19 +129,63 @@ fun CaptureToolbar(
                 ),
             )
 
+            Spacer(Modifier.weight(1f))
+
             TextButton(onClick = onInstallCa) {
-                Icon(Icons.Default.Lock, null, modifier = Modifier.size(14.dp))
+                Icon(
+                    Icons.Default.CardMembership,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
                 Spacer(Modifier.width(4.dp))
                 Text("安装CA证书", style = MaterialTheme.typography.labelSmall)
             }
 
-            IconButton(onClick = onOpenProtoManager) {
+            TextButton(onClick = onOpenProtoManager) {
                 Icon(
-                    Icons.Filled.Code,
-                    contentDescription = "管理 Proto Schema",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    painter = painterResource(Res.drawable.ic_protobuf),
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = Color.Unspecified
                 )
+                Spacer(Modifier.width(4.dp))
+                Text("添加Proto文件", style = MaterialTheme.typography.labelSmall)
             }
         }
+    }
+}
+
+
+@Preview
+@Composable
+private fun CaptureToolbarStoppedPreview() {
+    AppTheme {
+        CaptureToolbar(
+            status = CaptureStatus.STOPPED,
+            throttleConfig = ThrottleConfig(),
+            onStart = {},
+            onStop = {},
+            onClear = {},
+            onInstallCa = {},
+            onOpenProtoManager = {},
+            onOpenThrottleDialog = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun CaptureToolbarRunningPreview() {
+    AppTheme {
+        CaptureToolbar(
+            status = CaptureStatus.RUNNING,
+            throttleConfig = ThrottleConfig(preset = ThrottlePreset.FAST_3G),
+            onStart = {},
+            onStop = {},
+            onClear = {},
+            onInstallCa = {},
+            onOpenProtoManager = {},
+            onOpenThrottleDialog = {},
+        )
     }
 }
