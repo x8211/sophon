@@ -50,14 +50,33 @@ internal class HttpsMitmHandler(
                 ByteArray(buf.readableBytes()).also { buf.getBytes(buf.readerIndex(), it) }
             else null
         }
+        val isGrpc = GrpcDetector.isGrpc(requestHeaders)
 
         pendingRequests.addLast(
             PendingRequest(
                 id = id, timestamp = timestamp, startNano = startNano,
                 method = req.method().name(), path = req.uri(),
                 requestHeaders = requestHeaders, requestBody = requestBodyBytes,
-                isGrpc = GrpcDetector.isGrpc(requestHeaders)
+                isGrpc = isGrpc
             )
+        )
+
+        // 请求发出时立即上报，使其立刻出现在列表中（statusCode=null 显示为「...」）；
+        // 响应到达后 BackendResponseHandler 会用相同 id 再次上报完整包，ViewModel 负责替换。
+        onPacketCaptured(
+            if (isGrpc) {
+                CapturedPacket.Grpc(
+                    id = id, timestamp = timestamp,
+                    method = req.method().name(), scheme = "https", host = host, path = req.uri(),
+                    requestHeaders = requestHeaders, requestBody = requestBodyBytes,
+                )
+            } else {
+                CapturedPacket.Http(
+                    id = id, timestamp = timestamp,
+                    method = req.method().name(), scheme = "https", host = host, path = req.uri(),
+                    requestHeaders = requestHeaders, requestBody = requestBodyBytes,
+                )
+            }
         )
 
         val newReq = DefaultFullHttpRequest(

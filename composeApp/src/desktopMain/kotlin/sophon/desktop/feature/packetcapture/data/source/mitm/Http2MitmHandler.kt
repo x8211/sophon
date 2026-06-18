@@ -129,6 +129,29 @@ private class Http2FrontendStreamHandler(
         val startNano = System.nanoTime()
         val frontendStream = ctx.channel()
 
+        // 请求发出时立即上报，使其立刻出现在列表中（statusCode=null 显示为「...」）；
+        // 响应到达后 Http2BackendStreamHandler 会用相同 id 再次上报完整包，ViewModel 负责替换。
+        val reqHeadersMap = headers.toFlatMap()
+        val isGrpc = GrpcDetector.isGrpc(reqHeadersMap)
+        val pendingPath = headers.path()?.toString() ?: "/"
+        val pendingMethod = headers.method()?.toString() ?: "POST"
+        val pendingScheme = headers.scheme()?.toString() ?: "https"
+        onPacketCaptured(
+            if (isGrpc) {
+                CapturedPacket.Grpc(
+                    id = packetId, timestamp = timestamp,
+                    method = pendingMethod, scheme = pendingScheme, host = host, path = pendingPath,
+                    requestHeaders = reqHeadersMap, requestBody = requestBodyBytes,
+                )
+            } else {
+                CapturedPacket.Http(
+                    id = packetId, timestamp = timestamp,
+                    method = pendingMethod, scheme = pendingScheme, host = host, path = pendingPath,
+                    requestHeaders = reqHeadersMap, requestBody = requestBodyBytes,
+                )
+            }
+        )
+
         backendManager.withChannel(
             eventLoop = ctx.channel().eventLoop(),
             action = { backendParentChannel ->

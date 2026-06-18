@@ -107,10 +107,7 @@ sealed interface CapturedPacket {
         override val durationMs: Long? = null,
         override val error: String? = null,
         override val responseBodyFile: java.io.File? = null,
-    ) : CapturedPacket {
-        override fun equals(other: Any?): Boolean = other is CapturedPacket && id == other.id
-        override fun hashCode(): Int = id.hashCode()
-    }
+    ) : CapturedPacket
 
     /**
      * gRPC 请求记录（基于 HTTP/2，Content-Type: application/grpc）。
@@ -148,8 +145,6 @@ sealed interface CapturedPacket {
             return if (idx > 0 && idx < trimmed.lastIndex) trimmed.substring(idx + 1) else null
         }
 
-        override fun equals(other: Any?): Boolean = other is CapturedPacket && id == other.id
-        override fun hashCode(): Int = id.hashCode()
     }
 }
 

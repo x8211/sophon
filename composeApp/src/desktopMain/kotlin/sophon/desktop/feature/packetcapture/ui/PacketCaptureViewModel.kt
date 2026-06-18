@@ -66,12 +66,18 @@ class PacketCaptureViewModel(
         captureJob = viewModelScope.launch(Dispatchers.IO) {
             repository.startCapture(state.port).collect { packet ->
                 _uiState.update { current ->
-                    val newExpanded = if (packet.host !in current.expandedHosts)
+                    val isUpdate = current.packetIndex.containsKey(packet.id)
+                    val newExpanded = if (!isUpdate && packet.host !in current.expandedHosts)
                         current.expandedHosts + packet.host
                     else
                         current.expandedHosts
+                    // pending 包（statusCode=null）先 append；响应到达后以相同 id 的完整包替换
+                    val newPackets = if (isUpdate)
+                        current.packets.map { if (it.id == packet.id) packet else it }
+                    else
+                        current.packets + packet
                     current.copy(
-                        packets = current.packets + packet,
+                        packets = newPackets,
                         packetIndex = current.packetIndex + (packet.id to packet),
                         expandedHosts = newExpanded
                     )
