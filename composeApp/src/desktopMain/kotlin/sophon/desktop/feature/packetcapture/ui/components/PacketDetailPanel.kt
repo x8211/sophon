@@ -50,6 +50,17 @@ import sophon.desktop.feature.packetcapture.model.DecodedBody
 import sophon.desktop.feature.packetcapture.model.FileDownloadInfo
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+private val timestampFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
+
+private fun formatTimestamp(epochMs: Long): String =
+    Instant.ofEpochMilli(epochMs)
+        .atZone(ZoneId.systemDefault())
+        .format(timestampFormatter)
 
 private fun formatJsonOrRaw(text: String?): String {
     if (text.isNullOrBlank()) return "(空)"
@@ -214,6 +225,7 @@ private fun OverviewTab(packet: CapturedPacket) {
                 OverviewRow("URL", packet.url)
                 OverviewRow("协议", packet.scheme.uppercase())
             }
+            OverviewRow("请求时间", formatTimestamp(packet.timestamp))
             OverviewRow("状态码", packet.statusCode?.toString() ?: "-")
             OverviewRow("耗时", packet.durationMs?.let { "${it}ms" } ?: "-")
             OverviewRow("请求大小", "${packet.requestBodySize()} bytes")
