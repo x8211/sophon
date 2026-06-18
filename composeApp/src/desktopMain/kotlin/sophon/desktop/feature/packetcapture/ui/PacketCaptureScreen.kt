@@ -40,7 +40,6 @@ fun PacketCaptureScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         CaptureToolbar(
             status = state.status,
-            deviceProxy = state.deviceProxy,
             throttleConfig = state.throttleConfig,
             onStart = { viewModel.startCapture() },
             onStop = { viewModel.stopCapture() },

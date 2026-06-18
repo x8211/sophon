@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import sophon.desktop.core.CACHE_HOME
-import sophon.desktop.core.Context
 import sophon.desktop.feature.packetcapture.data.repository.PacketCaptureRepository
 import sophon.desktop.feature.packetcapture.data.repository.PacketCaptureRepositoryImpl
 import sophon.desktop.feature.packetcapture.data.source.grpc.ProtobufSchemaRegistry
@@ -41,21 +40,7 @@ class PacketCaptureViewModel(
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
 
     init {
-        observeDeviceProxy()
         restoreProtoPaths()
-    }
-
-    // ─── 设备代理 ───────────────────────────────────────────────────────────
-
-    private fun observeDeviceProxy() {
-        viewModelScope.launch(Dispatchers.IO) {
-            Context.stream.collect { refreshDeviceProxy() }
-        }
-    }
-
-    private suspend fun refreshDeviceProxy() {
-        val proxy = runCatching { repository.getDeviceProxy() }.getOrDefault("")
-        _uiState.update { it.copy(deviceProxy = proxy) }
     }
 
     // ─── 抓包 ───────────────────────────────────────────────────────────────
@@ -98,7 +83,6 @@ class PacketCaptureViewModel(
         captureJob = null
         repository.stopCapture()
         _uiState.update { it.copy(status = CaptureStatus.STOPPED) }
-        viewModelScope.launch(Dispatchers.IO) { refreshDeviceProxy() }
     }
 
     fun clearPackets() {
@@ -118,11 +102,6 @@ class PacketCaptureViewModel(
 
     fun updateFilter(text: String) {
         _uiState.update { it.copy(filterText = text) }
-    }
-
-    fun updatePort(port: Int) {
-        if (_uiState.value.isRunning) return
-        _uiState.update { it.copy(port = port) }
     }
 
     fun installCaToDevice() {

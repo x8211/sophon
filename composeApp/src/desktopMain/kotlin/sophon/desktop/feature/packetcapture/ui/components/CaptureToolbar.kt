@@ -39,7 +39,6 @@ import sophon.desktop.feature.packetcapture.model.ThrottleConfig
 @Composable
 fun CaptureToolbar(
     status: CaptureStatus,
-    deviceProxy: String,
     throttleConfig: ThrottleConfig,
     onStart: () -> Unit,
     onStop: () -> Unit,
@@ -115,20 +114,6 @@ fun CaptureToolbar(
                     selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ),
             )
-
-            Spacer(Modifier.weight(1f))
-
-            if (deviceProxy.isNotBlank()) {
-                Text(
-                    "设备代理: $deviceProxy",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = when (status) {
-                        CaptureStatus.RUNNING -> MaterialTheme.colorScheme.primary
-                        CaptureStatus.ERROR -> MaterialTheme.colorScheme.error
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                )
-            }
 
             TextButton(onClick = onInstallCa) {
                 Icon(Icons.Default.Lock, null, modifier = Modifier.size(14.dp))

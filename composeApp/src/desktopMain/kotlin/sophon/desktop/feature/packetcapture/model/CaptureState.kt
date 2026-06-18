@@ -10,7 +10,6 @@ enum class CaptureStatus { STOPPED, RUNNING, ERROR }
 data class CaptureState(
     val status: CaptureStatus = CaptureStatus.STOPPED,
     val port: Int = 8888,
-    val deviceProxy: String = "",
     val packets: List<CapturedPacket> = emptyList(),
     val selectedPacketId: Long? = null,
     val filterText: String = "",

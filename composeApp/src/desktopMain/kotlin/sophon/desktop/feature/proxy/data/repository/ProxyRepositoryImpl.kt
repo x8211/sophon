@@ -1,6 +1,7 @@
 package sophon.desktop.feature.proxy.data.repository
 
 import sophon.desktop.core.Shell.oneshotShell
+import sophon.desktop.feature.proxy.model.LocalNetworkInterface
 import java.net.NetworkInterface
 
 class ProxyRepositoryImpl : ProxyRepository {
@@ -18,11 +19,15 @@ class ProxyRepositoryImpl : ProxyRepository {
         "adb shell settings put global http_proxy :0".oneshotShell { it }
     }
 
-    override fun getLocalIPAddresses(): List<String> {
+    override fun getLocalIPAddresses(): List<LocalNetworkInterface> {
         return NetworkInterface.getNetworkInterfaces()
             .toList()
             .filterNot { it.isLoopback }
-            .flatMap { ni -> ni.inetAddresses().filter { it.isSiteLocalAddress }.toList() }
-            .map { it.hostAddress }
+            .flatMap { ni ->
+                ni.inetAddresses()
+                    .filter { it.isSiteLocalAddress }
+                    .map { addr -> LocalNetworkInterface(name = ni.name, ipAddress = addr.hostAddress ?: "") }
+                    .toList()
+            }
     }
 }
