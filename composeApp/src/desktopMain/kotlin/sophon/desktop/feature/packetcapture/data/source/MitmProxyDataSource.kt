@@ -38,9 +38,22 @@ private const val THROTTLE_MAX_DELAY_MS = 15_000L
  * 持有 [scope] 作为所有 CONNECT 隧道协程的调度上下文；[SupervisorJob] 保证单条连接的
  * 协程异常不会取消整个服务器的其他连接；[stop] 时统一 cancel 以终止所有进行中的握手协程。
  *
- * 限速通过 [GlobalTrafficShapingHandler] 实现，**在 TLS 握手完成后才插入 pipeline**，
- * 作用于解密后的明文流，完全规避握手阶段数据延迟导致的协议错误（FRAME_SIZE_ERROR）。
- * 限速在运行时可通过 [updateThrottle] 动态调整，无需重启代理。
+ * ## 限速架构（两个独立 handler，各负责一段，避免同一字节被计数两次）
+ *
+ * ```
+ * App ──[uploadTrafficShapingHandler: readLimit=uploadBps]──> 代理
+ *                                                              ──> 服务器（不限速，写限速=0）
+ *
+ * 服务器 ──[downloadTrafficShapingHandler: readLimit=downloadBps]──> 代理
+ *                                                                    ──> App（不限速，写限速=0）
+ * ```
+ *
+ * - [uploadTrafficShapingHandler]：插入**前端** channel（代理 ↔ App），仅设 readLimit 限制 App→代理上传；
+ *   writeLimit=0（代理→App 下行不限速，因为下行已在后端侧控制节奏）。
+ * - [downloadTrafficShapingHandler]：插入**后端** channel（代理 ↔ 服务器），仅设 readLimit 限制服务器→代理下载；
+ *   后端收到每个 chunk 后立即流式转发给 App，App 的下载节奏与代理收包节奏一致，durationMs 也随之真实反映限速耗时。
+ *
+ * 两个 handler 均在 TLS 握手完成后插入（作用于解密后的明文流），限速在运行时可通过 [updateThrottle] 动态调整。
  */
 class MitmProxyDataSource(private val onPacketCaptured: (CapturedPacket) -> Unit) {
 
@@ -51,14 +64,25 @@ class MitmProxyDataSource(private val onPacketCaptured: (CapturedPacket) -> Unit
     private var scope: CoroutineScope? = null
 
     /**
-     * 全局流量整形 handler，[GlobalTrafficShapingHandler] 为 @Sharable，可被所有 channel 共用。
-     * 在 TLS 握手完成后由 [ProxyFrontendHandler] 动态插入到前端 pipeline，
-     * 对外通过 [currentTrafficShapingHandler] 只读暴露。
+     * 前端限速 handler（App ↔ 代理），[GlobalTrafficShapingHandler] 为 @Sharable，可被所有前端 channel 共用。
+     * readLimit = uploadBps（限制 App→代理上传速度），writeLimit = 0（代理→App 下行不单独限速）。
+     * 在 TLS 握手完成后由 [ProxyFrontendHandler] 动态插入前端 pipeline。
      */
-    private var trafficShapingHandler: GlobalTrafficShapingHandler? = null
+    private var uploadTrafficShapingHandler: GlobalTrafficShapingHandler? = null
 
-    /** 供 [ProxyFrontendHandler] 在 MITM 管道安装时读取并注入的 handler 实例。 */
-    val currentTrafficShapingHandler: GlobalTrafficShapingHandler? get() = trafficShapingHandler
+    /**
+     * 后端限速 handler（代理 ↔ 服务器），[GlobalTrafficShapingHandler] 为 @Sharable，可被所有后端 channel 共用。
+     * readLimit = downloadBps（限制服务器→代理下载速度），writeLimit = 0（代理→服务器上行不单独限速）。
+     * 在后端 TLS 握手完成后由 [ProxyFrontendHandler] 和 [sophon.desktop.feature.packetcapture.data.source.mitm.BackendChannelManager]
+     * 动态插入后端 pipeline。
+     */
+    private var downloadTrafficShapingHandler: GlobalTrafficShapingHandler? = null
+
+    /** 供 [ProxyFrontendHandler] 读取并注入到**前端** channel 的上传限速 handler。 */
+    val currentUploadTrafficShapingHandler: GlobalTrafficShapingHandler? get() = uploadTrafficShapingHandler
+
+    /** 供 [ProxyFrontendHandler] 和 [sophon.desktop.feature.packetcapture.data.source.mitm.BackendChannelManager] 读取并注入到**后端** channel 的下载限速 handler。 */
+    val currentDownloadTrafficShapingHandler: GlobalTrafficShapingHandler? get() = downloadTrafficShapingHandler
 
     /** 记录最新的限速配置，用于服务器重启时恢复。 */
     private var pendingThrottleConfig: ThrottleConfig = ThrottleConfig()
@@ -71,10 +95,19 @@ class MitmProxyDataSource(private val onPacketCaptured: (CapturedPacket) -> Unit
             workerGroup = worker
 
             val config = pendingThrottleConfig
-            trafficShapingHandler = GlobalTrafficShapingHandler(
+            // 前端 handler：只限上传（readLimit），写限速=0
+            uploadTrafficShapingHandler = GlobalTrafficShapingHandler(
                 worker,
-                config.effectiveDownloadBps,
+                0L,
                 config.effectiveUploadBps,
+                THROTTLE_CHECK_INTERVAL_MS,
+                THROTTLE_MAX_DELAY_MS,
+            )
+            // 后端 handler：只限下载（readLimit），写限速=0
+            downloadTrafficShapingHandler = GlobalTrafficShapingHandler(
+                worker,
+                0L,
+                config.effectiveDownloadBps,
                 THROTTLE_CHECK_INTERVAL_MS,
                 THROTTLE_MAX_DELAY_MS,
             )
@@ -104,8 +137,10 @@ class MitmProxyDataSource(private val onPacketCaptured: (CapturedPacket) -> Unit
     fun stop() {
         serverChannel?.close()?.sync()
         serverChannel = null
-        trafficShapingHandler?.release()
-        trafficShapingHandler = null
+        uploadTrafficShapingHandler?.release()
+        uploadTrafficShapingHandler = null
+        downloadTrafficShapingHandler?.release()
+        downloadTrafficShapingHandler = null
         bossGroup?.shutdownGracefully()
         workerGroup?.shutdownGracefully()
         bossGroup = null
@@ -121,7 +156,10 @@ class MitmProxyDataSource(private val onPacketCaptured: (CapturedPacket) -> Unit
      */
     fun updateThrottle(config: ThrottleConfig) {
         pendingThrottleConfig = config
-        trafficShapingHandler?.configure(config.effectiveDownloadBps, config.effectiveUploadBps)
+        // 前端 handler：writeLimit=0（不限下行），readLimit=uploadBps
+        uploadTrafficShapingHandler?.configure(0L, config.effectiveUploadBps)
+        // 后端 handler：writeLimit=0（不限上行），readLimit=downloadBps
+        downloadTrafficShapingHandler?.configure(0L, config.effectiveDownloadBps)
     }
 
     val isRunning: Boolean get() = serverChannel?.isActive == true

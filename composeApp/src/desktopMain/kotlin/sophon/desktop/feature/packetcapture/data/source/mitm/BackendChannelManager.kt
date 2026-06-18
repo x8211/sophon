@@ -12,6 +12,7 @@ import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.ssl.ApplicationProtocolNames
 import io.netty.handler.ssl.SslContext
 import io.netty.handler.ssl.SslHandler
+import io.netty.handler.traffic.GlobalTrafficShapingHandler
 import io.netty.util.concurrent.GenericFutureListener
 
 /**
@@ -27,14 +28,16 @@ import io.netty.util.concurrent.GenericFutureListener
  * 若多条前端流在同一时刻发现后端连接已失效，首个调用触发重连，后续调用均进入 [pendingActions]
  * 队列等待同一次重连结果，不会发起多余的 TCP 握手。
  *
- * @param host         后端主机名（用于 TLS SNI 和重连地址）
- * @param port         后端端口
- * @param clientSslCtx 已配置好 ALPN（优先 h2）和 InsecureTrustManager 的客户端 SSL 上下文
+ * @param host                          后端主机名（用于 TLS SNI 和重连地址）
+ * @param port                          后端端口
+ * @param clientSslCtx                  已配置好 ALPN（优先 h2）和 InsecureTrustManager 的客户端 SSL 上下文
+ * @param downloadTrafficShapingHandler 后端下载限速 handler（可为 null），重连后自动注入新 channel 的 pipeline
  */
 internal class BackendChannelManager(
     private val host: String,
     private val port: Int,
-    private val clientSslCtx: SslContext
+    private val clientSslCtx: SslContext,
+    private val downloadTrafficShapingHandler: GlobalTrafficShapingHandler? = null,
 ) {
 
     private var currentChannel: Channel? = null
@@ -138,6 +141,11 @@ internal class BackendChannelManager(
                     // 时序关键：必须在 EventLoop 线程（此 listener 内）同步安装 h2 codec，
                     // 确保在服务端首个 SETTINGS 帧到达前管道已就位（与初始握手的约定相同）。
                     addHttp2BackendCodec(newChannel)
+
+                    // 重连后端 channel 同样注入下载限速 handler，与初始连接保持一致。
+                    downloadTrafficShapingHandler?.let { handler ->
+                        newChannel.pipeline().addAfter("backendSsl", "backendDownloadThrottle", handler)
+                    }
 
                     currentChannel = newChannel
                     newChannel.closeFuture().addListener(ChannelFutureListener { currentChannel = null })

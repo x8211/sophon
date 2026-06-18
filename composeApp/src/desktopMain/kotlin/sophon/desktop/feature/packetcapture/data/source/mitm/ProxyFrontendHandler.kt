@@ -113,15 +113,21 @@ class ProxyFrontendHandler(
         }
         backendChannel.pipeline().addLast("backendSslErrCatcher", backendErrCatcher)
 
-        // --- 第三步：后端 h2 codec 提前装配（时序关键点）---
+        // --- 第三步：后端 h2 codec 提前装配 + 后端下载限速 handler 注入（时序关键点）---
         // onSuccess 在 EventLoop 线程同步执行（协程恢复前），确保 Http2FrameCodec 在
         // 服务端首个 SETTINGS 帧到达前就位，消除线程切换导致的竞争窗口。
+        // 后端下载限速 handler 同样在此处注入：紧跟在 backendSsl 之后，作用于解密后的明文流。
         var backendProto = ""
         runCatching {
             backendSsl.handshakeFuture().awaitHandshake {
                 backendProto = backendSsl.applicationProtocol()
                 if (backendProto == ApplicationProtocolNames.HTTP_2) {
                     addHttp2BackendCodec(backendChannel)
+                }
+                // 后端下载限速：限制服务器→代理的读取速率，使 durationMs 真实反映限速耗时；
+                // 后端流式转发会将每个 chunk 立即发给 App，App 下载节奏与代理收包节奏一致。
+                proxyServer.currentDownloadTrafficShapingHandler?.let { handler ->
+                    backendChannel.pipeline().addAfter("backendSsl", "backendDownloadThrottle", handler)
                 }
             }
         }.getOrElse {
@@ -177,15 +183,19 @@ class ProxyFrontendHandler(
                     is MitmProtocol.Http2 -> {
                         // BackendChannelManager 接管后端连接：初始 channel 由本协程完成握手后移交，
                         // 后续 GOAWAY 触发的重连由 Manager 自主完成，对 Http2FrontendStreamHandler 透明。
-                        val backendManager = BackendChannelManager(tunnel.host, tunnel.port, clientSslCtx)
+                        // 传入 downloadTrafficShapingHandler，Manager 在重连时也会注入到新后端 channel。
+                        val backendManager = BackendChannelManager(
+                            tunnel.host, tunnel.port, clientSslCtx,
+                            proxyServer.currentDownloadTrafficShapingHandler
+                        )
                         backendManager.donateChannel(backendChannel)
                         Http2MitmSession(tunnel.host, ctx.channel(), backendManager, onPacketCaptured, idCounter).install()
                     }
                 }
-                // TLS 握手完成、MITM 管道已就绪后，将限速 handler 插入 frontendSsl 之后。
-                // 此时作用于已解密的明文流，完全规避握手阶段数据延迟导致的协议错误。
-                proxyServer.currentTrafficShapingHandler?.let { trafficHandler ->
-                    ctx.pipeline().addAfter("frontendSsl", "trafficShaping", trafficHandler)
+                // TLS 握手完成、MITM 管道已就绪后，将前端上传限速 handler 插入 frontendSsl 之后。
+                // 在握手结束后插入，确保握手阶段数据流不受 readLimit 节流影响。
+                proxyServer.currentUploadTrafficShapingHandler?.let { trafficHandler ->
+                    ctx.pipeline().addAfter("frontendSsl", "frontendUploadThrottle", trafficHandler)
                 }
             }
         }.getOrElse { backendChannel.close(); return }
@@ -202,11 +212,11 @@ class ProxyFrontendHandler(
     ) {
         if (request.host.isEmpty()) { ctx.close(); return }
 
-        // plain HTTP 无 TLS，握手完成即为此刻，直接插入限速 handler。
+        // plain HTTP 无 TLS，握手完成即为此刻，直接插入前端上传限速 handler。
         // 若已存在则跳过（同一连接上多次请求复用场景）。
-        proxyServer.currentTrafficShapingHandler?.let { trafficHandler ->
-            if (ctx.pipeline().get("trafficShaping") == null) {
-                ctx.pipeline().addFirst("trafficShaping", trafficHandler)
+        proxyServer.currentUploadTrafficShapingHandler?.let { trafficHandler ->
+            if (ctx.pipeline().get("frontendUploadThrottle") == null) {
+                ctx.pipeline().addFirst("frontendUploadThrottle", trafficHandler)
             }
         }
 
@@ -236,6 +246,10 @@ class ProxyFrontendHandler(
             .channel(NioSocketChannel::class.java)
             .handler(object : ChannelInitializer<SocketChannel>() {
                 override fun initChannel(ch: SocketChannel) {
+                    // 后端下载限速：限制服务器→代理读取速率，使 durationMs 真实反映限速耗时。
+                    proxyServer.currentDownloadTrafficShapingHandler?.let { handler ->
+                        ch.pipeline().addFirst("backendDownloadThrottle", handler)
+                    }
                     ch.pipeline().addLast(HttpClientCodec())
                     ch.pipeline().addLast(HttpObjectAggregator(MAX_CONTENT_LENGTH))
                 }
