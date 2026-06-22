@@ -1,16 +1,16 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.jar.JarEntry
+import java.util.jar.JarFile
+import java.util.jar.JarOutputStream
 
 val appName: String by project
 val appVersion: String by project
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.serialization)
@@ -45,36 +45,27 @@ val generateAppInfo by tasks.registering {
 }
 
 kotlin {
-    androidTarget {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
-        }
-    }
-
     jvm("desktop")
 
     sourceSets {
-        val desktopMain by getting{
+        val desktopMain by getting {
             kotlin.srcDir(generateAppInfo.map { it.outputs.files.asPath })
         }
-        val desktopTest by getting // 添加测试源集
+        val desktopTest by getting
 
-        androidMain.dependencies {
-        }
         commonMain.dependencies {
+            implementation(compose.components.resources)
+        }
+        desktopMain.dependencies {
+            implementation(compose.desktop.currentOs)
             implementation(compose.runtime)
+            implementation(compose.material3)
+            implementation(compose.materialIconsExtended)
             implementation(libs.serialization.json)
             implementation(libs.androidx.navigation.compose)
             implementation(libs.androidx.datastore)
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.androidx.lifecycle.viewmodel.compose)
-            implementation(compose.material3)
-            implementation(compose.materialIconsExtended)
-            implementation(libs.compose.components.resources)
-        }
-        desktopMain.dependencies {
-            implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(libs.sqlite.jdbc)
             implementation(libs.netty.all)
@@ -91,36 +82,43 @@ kotlin {
     }
 }
 
-android {
-    namespace = "sophon.android"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
+// 移除 ProGuard 处理后各依赖 JAR 中残留的签名文件，防止运行时 JAR 签名验证失败
+// 背景：部分第三方 JAR（如 BouncyCastle）由官方签名。ProGuard 修改字节码后
+// SHA-256 哈希不再匹配，但签名文件（.SF/.DSA/.RSA）默认被原样复制到输出 JAR，
+// Java ClassLoader 见到签名文件就触发验证 → "SHA-256 digest error"。
+val stripJarSignatures by tasks.registering {
+    val proguardOutputDir = layout.buildDirectory.dir("compose/tmp/main-release/proguard")
+    inputs.dir(proguardOutputDir)
+    outputs.dir(proguardOutputDir)
 
-    defaultConfig {
-        applicationId = "sophon.android"
-        minSdk = libs.versions.android.minSdk.get().toInt()
-        targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
-    }
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    doLast {
+        val jarSignaturePattern = Regex("META-INF/[^/]+\\.(SF|DSA|RSA|EC)$")
+        proguardOutputDir.get().asFileTree.filter { it.extension == "jar" }.forEach { jar ->
+            val entries = mutableListOf<Pair<String, ByteArray>>()
+            var hasSignatureFiles = false
+            JarFile(jar, false).use { jarFile ->
+                jarFile.entries().asSequence().forEach { entry ->
+                    if (jarSignaturePattern.containsMatchIn(entry.name)) {
+                        hasSignatureFiles = true
+                    } else {
+                        entries += entry.name to jarFile.getInputStream(entry).readBytes()
+                    }
+                }
+            }
+            if (hasSignatureFiles) {
+                val tmp = File(jar.parent, "${jar.name}.tmp")
+                JarOutputStream(tmp.outputStream()).use { out ->
+                    entries.forEach { (name, bytes) ->
+                        out.putNextEntry(JarEntry(name))
+                        out.write(bytes)
+                        out.closeEntry()
+                    }
+                }
+                jar.delete()
+                tmp.renameTo(jar)
+                logger.lifecycle("Stripped JAR signatures from ${jar.name}")
+            }
         }
-    }
-    buildTypes {
-        getByName("release") {
-            // 启用代码压缩和混淆
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
     }
 }
 
@@ -128,7 +126,17 @@ tasks.withType<KotlinCompile>().configureEach {
     dependsOn(generateAppInfo)
 }
 
-dependencies {
+afterEvaluate {
+    // 将签名文件清理任务插入 ProGuard 之后、所有打包任务之前
+    val proguardTask = tasks.findByName("proguardReleaseJars")
+    if (proguardTask != null) {
+        stripJarSignatures.get().dependsOn(proguardTask)
+        tasks.matching {
+            it.name.startsWith("package") ||
+            it.name.startsWith("create") && it.name.contains("Distributable") ||
+            it.name.startsWith("create") && it.name.contains("Distribution")
+        }.configureEach { dependsOn(stripJarSignatures) }
+    }
 }
 
 compose.desktop {

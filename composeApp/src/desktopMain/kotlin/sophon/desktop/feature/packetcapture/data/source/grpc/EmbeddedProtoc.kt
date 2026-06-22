@@ -41,7 +41,7 @@ internal object EmbeddedProtoc {
         // 打包后：compose.application 将平台子目录平铺到 resources.dir 下
         val resourcesDir = System.getProperty("compose.application.resources.dir")
         if (resourcesDir != null) {
-            scanForProtoc(File(resourcesDir, "tools"))?.let { return it.absolutePath }
+            scanForProtoc(File(resourcesDir, "tools"))?.let { return ensureExecutable(it).absolutePath }
         }
 
         // 开发模式：直接从 appResources 源目录查找
@@ -51,10 +51,18 @@ internal object EmbeddedProtoc {
             "src/desktopMain/appResources/$platformDir/tools",
         )
         candidateRoots.forEach { root ->
-            scanForProtoc(File(root))?.let { return it.absolutePath }
+            scanForProtoc(File(root))?.let { return ensureExecutable(it).absolutePath }
         }
 
         return File(candidateRoots.first(), "protoc-*/bin/$binary").absolutePath
+    }
+
+    /** jpackage 打包后内置二进制可能丢失可执行位，与 [AdbRepositoryImpl.autoFindAdbTool] 保持一致。 */
+    private fun ensureExecutable(binary: File): File {
+        if (binary.exists() && !binary.canExecute()) {
+            binary.setExecutable(true)
+        }
+        return binary
     }
 
     private fun resolveWellKnownIncludeDir(): String? {
