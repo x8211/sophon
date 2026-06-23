@@ -22,6 +22,8 @@ disable-model-invocation: true
 
 `NEW_PKG_PREFIX` 决定了新 Kotlin 包路径，原始包路径为 `sophon/desktop/`，新路径为 `{NEW_PKG_PREFIX}/desktop/`。
 
+> **多级包前缀**：若新项目需要多级包路径（如 `com/myapp` → `com.myapp.desktop`），Step 5 中 `mv` 需手动创建中间目录，Step 6 的 sed 模式需调整为完整的多级路径匹配。建议优先使用单级前缀以避免复杂性。
+
 ---
 
 ## 执行清单
@@ -34,9 +36,10 @@ disable-model-invocation: true
 - [ ] Step 3: 修改 settings.gradle.kts
 - [ ] Step 4: 修改 composeApp/build.gradle.kts
 - [ ] Step 5: 重命名 Kotlin 源码目录
-- [ ] Step 6: 批量替换包名/导入声明
-- [ ] Step 7: 替换图标文件
-- [ ] Step 8: 验证构建
+- [ ] Step 6: 批量替换包名/导入声明（含全量 sophon 字符串扫描）
+- [ ] Step 7: 同步 Agent Rules（CLAUDE.md / AGENTS.md）
+- [ ] Step 8: 替换图标文件
+- [ ] Step 9: 验证构建
 ```
 
 ---
@@ -58,14 +61,12 @@ git init && git add -A && git commit -m "chore: fork from Sophon"
 
 文件位置：`{DEST_DIR}/gradle.properties`
 
-将以下两行替换：
+将以下一行替换：
 ```properties
 # 旧
-group=sophon
 appName=Sophon
 
 # 新
-group={NEW_PKG_PREFIX}
 appName={NEW_APP_NAME}
 ```
 
@@ -155,7 +156,7 @@ mv composeApp/src/desktopTest/kotlin/sophon \
 
 ---
 
-## Step 6：批量替换包名/导入声明
+## Step 6：批量替换包名/导入声明（含全量 sophon 字符串扫描）
 
 使用 `find + sed` 对所有 `.kt` 文件执行批量替换：
 
@@ -163,27 +164,67 @@ mv composeApp/src/desktopTest/kotlin/sophon \
 cd {DEST_DIR}
 
 # 替换 package 声明和 import 语句中的包路径
-find . -name "*.kt" -not -path "*/build/*" | \
-  xargs sed -i '' \
+find . -name "*.kt" -not -path "*/build/*" -exec sed -i '' \
     -e 's/package sophon\.desktop/package {NEW_PKG_PREFIX}.desktop/g' \
-    -e 's/import sophon\.desktop/import {NEW_PKG_PREFIX}.desktop/g'
+    -e 's/import sophon\.desktop/import {NEW_PKG_PREFIX}.desktop/g' {} \;
 
 # 替换 proguard-rules.pro 中的包引用（如存在）
-find . -name "*.pro" -not -path "*/build/*" | \
-  xargs sed -i '' 's/sophon\.desktop/{NEW_PKG_PREFIX}.desktop/g' 2>/dev/null || true
+find . -name "*.pro" -not -path "*/build/*" -exec sed -i '' \
+    's/sophon\.desktop/{NEW_PKG_PREFIX}.desktop/g' {} \; 2>/dev/null || true
 ```
 
-> 注意：macOS `sed` 的 `-i` 需要加 `''` 参数（`-i ''`），Linux 上直接用 `-i`。
+> 注意：macOS `sed` 的 `-i` 需要加 `''` 参数（`-i ''`）；`xargs` 在 macOS 沙箱环境下可能报 `sysconf` 错误，改用 `-exec` 更稳定。
 
-替换完成后验证无残留引用：
+**Step 6 完成后执行全量扫描**，除包名格式外，还有三类残留需手动修复：
+
 ```bash
-rg "sophon\.desktop" --include="*.kt" --include="*.pro" -l
-# 预期输出：空（无文件）
+# 全量扫描所有文本文件（含 .md、.kts、.toml、.pro）
+grep -r "sophon" {DEST_DIR} \
+  --include="*.kt" --include="*.kts" --include="*.toml" \
+  --include="*.md" --include="*.pro" --include="*.properties" \
+  --exclude-dir=".git" --exclude-dir="build" -l
+```
+
+常见残留类型及修复方式：
+
+| 类型 | 示例 | 处理方式 |
+|---|---|---|
+| KDoc 类引用 | `[sophon.desktop.feature.xxx.Bar]` | sed 替换为新包名 |
+| 临时文件名字符串 | `"sophon-proto"`, `"sophon_dl_"` | sed 替换为新项目名 |
+| 文件路径注释 | `~/.sophon/proto_paths.json` | sed 替换为 `~/.{NEW_APP_NAME}/` |
+| 文档标题/描述 | `# Sophon 项目编码总纲` | sed 替换为新项目名 |
+| 目录树示例 | `sophon/` 根目录名 | sed 替换 |
+
+---
+
+## Step 7：同步 Agent Rules（CLAUDE.md / AGENTS.md）
+
+Sophon 使用 `CLAUDE.md`（完整规范）+ `AGENTS.md`（仅一行引用）的双文件结构，需一并替换品牌信息：
+
+```bash
+cd {DEST_DIR}
+
+# 1. 删除旧的 .agent/rules/AGENTS.md（若存在）
+rm -f .agent/rules/AGENTS.md
+
+# 2. 批量替换 CLAUDE.md 中的项目名与包名
+sed -i '' \
+  -e 's/sophon\.desktop/{NEW_PKG_PREFIX}.desktop/g' \
+  -e 's/sophon\/desktop/{NEW_PKG_PREFIX}\/desktop/g' \
+  -e 's/\*\*Sophon\*\*/**{NEW_APP_NAME}**/g' \
+  -e 's/^# Sophon /# {NEW_APP_NAME} /' \
+  -e 's/^sophon\/$/{NEW_PKG_PREFIX}\//' \
+  CLAUDE.md
+```
+
+完成后用全量扫描确认 `CLAUDE.md` 中无残留 `sophon`：
+```bash
+grep "sophon" CLAUDE.md || echo "clean"
 ```
 
 ---
 
-## Step 7：替换图标文件
+## Step 8：替换图标文件
 
 图标目录：`{DEST_DIR}/composeApp/src/desktopMain/launcher/`
 
@@ -203,7 +244,7 @@ cp {用户提供的.png路径}  {DEST_DIR}/composeApp/src/desktopMain/launcher/i
 
 ---
 
-## Step 8：验证构建
+## Step 9：验证构建
 
 ```bash
 cd {DEST_DIR}
@@ -211,7 +252,7 @@ cd {DEST_DIR}
 ```
 
 构建成功则任务完成。如有错误：
-1. 搜索残留的旧包名：`rg "sophon" --include="*.kt" -l`
+1. 执行全量扫描定位残留：`grep -r "sophon" . --include="*.kt" --include="*.kts" --include="*.pro" --exclude-dir=".git" --exclude-dir="build" -l`
 2. 检查 `build.gradle.kts` 中是否遗漏了某处 `sophon` 字符串
 3. 检查 `generateAppInfo` task 生成的 `AppInfo.kt` 包名是否已更新（见 Step 4d）
 
@@ -219,8 +260,9 @@ cd {DEST_DIR}
 
 ## 注意事项
 
-- **数据隔离**：`CACHE_HOME` 由 `APP_NAME` 推导（`~/.{APP_NAME}`），修改 `appName` 后子项目的用户数据目录会自动隔离，无需额外处理。
+- **数据隔离**：`CACHE_HOME` 由 `APP_NAME` 推导（`~/.{APP_NAME}`），修改 `appName` 后子项目的用户数据目录会自动隔离，无需额外处理。但代码中可能存在硬编码了 `sophon` 的路径字符串（如 `~/.sophon/`），需通过 Step 6 的全量扫描找到并手动替换。
 - **DataStore 文件**：若 `DataStoreUtils.kt` 中硬编码了文件名（非仅依赖 `CACHE_HOME`），需额外检查并更新。
 - **Windows UUID**：`upgradeUuid` 与 Sophon 原始值不同是强制要求，否则 Windows 安装程序会认为两者是同一应用并互相覆盖。
 - **ProGuard**：`proguard-rules.pro` 中如有 `-keep class sophon.**` 类似规则，Step 6 的 `sed` 命令会自动处理 `.pro` 文件；完成后手动确认规则仍然正确。
+- **临时文件名**：代码中使用 `File.createTempFile("sophon-xxx", ...)` 的地方不影响功能但会保留旧品牌痕迹，Step 6 全量扫描时一并替换。
 - **Git 历史**：fork 后建议立即 `git init` + 初始提交，与 Sophon 的 git 历史彻底解耦。

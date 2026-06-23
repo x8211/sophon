@@ -216,7 +216,7 @@ class MyFeatureViewModel(
 ## 10. 其他规范 (Other Standards)
 
 - **禁止过时方法**: 不要使用过时（Deprecated）的方法，应立即更换为系统或 IDE 建议的新方法（ReplaceWith）。
-- **ProGuard 混淆规则**: release 包混淆配置原则（新增依赖时的检查清单、禁用 `-dontwarn **`、注解 Target 验证等），详见 [docs/proguard_rules.md](docs/proguard_rules.md)。
+- **ProGuard 混淆规则**: release 包混淆配置见 `composeApp/proguard-rules.pro`。
 
 ---
 
