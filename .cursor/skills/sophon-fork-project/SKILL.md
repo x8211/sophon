@@ -168,13 +168,18 @@ find . -name "*.kt" -not -path "*/build/*" -exec sed -i '' \
     -e 's/package sophon\.desktop/package {NEW_PKG_PREFIX}.desktop/g' \
     -e 's/import sophon\.desktop/import {NEW_PKG_PREFIX}.desktop/g' {} \;
 
-# 替换 CA 证书相关命名（CertificateAuthority.kt、PacketCaptureRepositoryImpl.kt、PacketCaptureScreen.kt）
-# 注意：CN=Sophon CA 为首字母大写，grep -r "sophon" 不会捕获，必须单独处理
+# 替换 CA 证书相关命名（CertificateAuthority.kt、PacketCaptureRepositoryImpl.kt、PacketCaptureScreen.kt、ProxyFrontendHandler.kt）
+# 注意：CN=Sophon CA / Sophon CA 为首字母大写，grep -r "sophon" 不会捕获，必须单独处理
+# 顺序重要：先替换最长/最精确的模式（CN=Sophon CA, O=Sophon），再替换更通用的（Sophon CA），
+# 避免后者在 sed 同一行中重复匹配已被前者处理的部分。
 find . -name "*.kt" -not -path "*/build/*" -exec sed -i '' \
     -e 's/CN=Sophon CA, O=Sophon/CN={NEW_APP_NAME} CA, O={NEW_APP_NAME}/g' \
     -e 's/SophonCA\.crt/{NEW_APP_NAME}CA.crt/g' \
     -e 's/sophon_ca\.crt/{NEW_PKG_PREFIX}_ca.crt/g' \
-    -e 's/sophon_ca\.key/{NEW_PKG_PREFIX}_ca.key/g' {} \;
+    -e 's/sophon_ca\.key/{NEW_PKG_PREFIX}_ca.key/g' \
+    -e 's/sophon\.cert/{NEW_PKG_PREFIX}.cert/g' \
+    -e 's/sophon-ca\.crt/{NEW_PKG_PREFIX}-ca.crt/g' \
+    -e 's/Sophon CA/{NEW_APP_NAME} CA/g' {} \;
 
 # 替换 proguard-rules.pro 中的包引用（如存在）
 find . -name "*.pro" -not -path "*/build/*" -exec sed -i '' \
@@ -205,6 +210,9 @@ grep -ri "sophon" {DEST_DIR} \
 | **CA 证书 DN**（首字母大写） | `CN=Sophon CA, O=Sophon` | 由上方 CA 专项 sed 处理，**grep 扫描须加 `-i`** |
 | **CA 文件名**（小写） | `sophon_ca.crt`, `sophon_ca.key` | 由上方 CA 专项 sed 处理 |
 | **CA adb push 路径 / UI 文案** | `/sdcard/SophonCA.crt` | 由上方 CA 专项 sed 处理 |
+| **iOS 魔术域名**（cert 下载） | `sophon.cert`（ProxyFrontendHandler.kt 拦截 + PacketCaptureScreen.kt UI 文本） | 由上方 CA 专项 sed 处理 |
+| **Content-Disposition 文件名** | `sophon-ca.crt`（HTTP 响应头）| 由上方 CA 专项 sed 处理 |
+| **CA 引导 UI 文案**（首字母大写） | `「Sophon CA」`（PacketCaptureScreen.kt iOS 引导步骤）| 由上方 CA 专项 sed 处理 |
 
 ---
 
