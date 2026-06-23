@@ -84,10 +84,6 @@
 -keep class com.google.protobuf.** { *; }
 -dontwarn com.google.protobuf.**
 
-# SQLite JDBC
--keep class org.sqlite.** { *; }
--dontwarn org.slf4j.**
-
 # -----------------------------------------------------------------------------
 # 通用规则: JVM & 标准 Java 类库
 # -----------------------------------------------------------------------------

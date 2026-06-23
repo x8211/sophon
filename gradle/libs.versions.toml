@@ -9,7 +9,6 @@ junitJupiterApi = "5.13.4"
 junitPlatformRunner = "1.13.4"
 serialization = "2.2.0"
 serialization-json = "1.9.0"
-sqlite-jdbc = "3.49.1.0"
 netty = "4.1.121.Final"
 bouncycastle = "1.80"
 protobuf = "3.25.3"
@@ -26,7 +25,6 @@ serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-jso
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junitJupiterApi" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junitJupiterApi" }
 junit-platform-runner = { module = "org.junit.platform:junit-platform-runner", version.ref = "junitPlatformRunner" }
-sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 netty-all = { module = "io.netty:netty-all", version.ref = "netty" }
 bouncycastle = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
 protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }

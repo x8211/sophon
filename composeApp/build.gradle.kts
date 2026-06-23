@@ -67,7 +67,6 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.kotlinx.coroutinesSwing)
-            implementation(libs.sqlite.jdbc)
             implementation(libs.netty.all)
             implementation(libs.bouncycastle)
             implementation(libs.protobuf.java)

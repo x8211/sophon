@@ -33,7 +33,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import sophon.desktop.feature.appmonitor.feature.activitystack.ui.ActivityStackScreen
 import sophon.desktop.feature.appmonitor.feature.fileexplorer.ui.FileExplorerScreen
 import sophon.desktop.feature.appmonitor.feature.gfx.ui.GfxMonitorScreen
-import sophon.desktop.feature.appmonitor.feature.grpc.ui.GrpcCaptureScreen
 import sophon.desktop.feature.appmonitor.feature.thread.ui.ThreadScreen
 import sophon.desktop.ui.theme.Dimens
 
@@ -109,10 +108,6 @@ fun AppMonitorScreen(
                 AppMonitorFeature.GRAPHIC_MONITOR -> GfxMonitorScreen(
                     packageName = packageName,
                     refreshTrigger = refreshTrigger
-                )
-
-                AppMonitorFeature.GRPC_CAPTURE -> GrpcCaptureScreen(
-                    packageName = packageName
                 )
             }
         }
