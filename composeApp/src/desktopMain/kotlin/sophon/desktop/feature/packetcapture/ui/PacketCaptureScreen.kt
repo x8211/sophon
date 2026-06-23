@@ -131,10 +131,10 @@ private fun CaInstallGuideDialog(onDismiss: () -> Unit) {
         title = { Text("CA 证书安装指引") },
         text = {
             Text(
-                "CA 证书文件已推送到设备 /sdcard/MicoToolboxCA.crt。\n\n" +
+                "CA 证书文件已推送到设备 /sdcard/SophonCA.crt。\n\n" +
                         "请在 Android 设备上操作：\n" +
                         "设置 → 安全 → 加密和凭据 → 安装证书 → CA 证书\n\n" +
-                        "找到 /sdcard/MicoToolboxCA.crt 并安装。\n\n" +
+                        "找到 /sdcard/SophonCA.crt 并安装。\n\n" +
                         "提示：部分设备需先设置锁屏密码，且证书安装后需信任才能生效。",
                 style = MaterialTheme.typography.bodySmall
             )

@@ -36,8 +36,8 @@ import java.util.concurrent.ConcurrentHashMap
 object CertificateAuthority {
 
     private val caDir = File(CACHE_HOME, "ca").also { it.mkdirs() }
-    private val caCertFile = File(caDir, "ca.crt")
-    private val caKeyFile = File(caDir, "ca.key")
+    private val caCertFile = File(caDir, "sophon_ca.crt")
+    private val caKeyFile = File(caDir, "sophon_ca.key")
 
     private var caCert: X509Certificate
     private var caPrivateKey: PrivateKey
@@ -74,7 +74,7 @@ object CertificateAuthority {
 
     private fun buildSslContextFor(host: String, supportH2: Boolean = true): SslContext {
         val leafKeyPair = leafKeyPairGenerator.generateKeyPair()
-        val issuer = X500Name("CN=MicoToolbox CA, O=MicoToolbox, C=CN")
+        val issuer = X500Name("CN=Sophon CA, O=Sophon, C=CN")
         val subject = X500Name("CN=$host")
         val notBefore = Date(System.currentTimeMillis() - 86400_000L)
         val notAfter = Date(System.currentTimeMillis() + 365L * 86400_000L)
@@ -126,7 +126,7 @@ object CertificateAuthority {
 
     private fun createAndSaveCA(): Pair<X509Certificate, PrivateKey> {
         val keyPair = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
-        val name = X500Name("CN=MicoToolbox CA, O=MicoToolbox, C=CN")
+        val name = X500Name("CN=Sophon CA, O=Sophon, C=CN")
         val notBefore = Date(System.currentTimeMillis() - 86400_000L)
         val notAfter = Date(System.currentTimeMillis() + 10 * 365L * 86400_000L)
         val serial = BigInteger.valueOf(System.currentTimeMillis())

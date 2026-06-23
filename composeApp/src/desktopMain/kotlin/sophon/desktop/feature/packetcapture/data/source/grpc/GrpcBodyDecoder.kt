@@ -23,7 +23,10 @@ internal object GrpcBodyDecoder {
         val frame = ProtobufSchemalessDecoder.stripGrpcFrame(bytes)
         val compressed = frame?.compressed ?: false
         val messageLength = frame?.messageLength ?: -1
-        val protoBody = frame?.body ?: bytes
+        // 压缩帧先解压，再交给 schema-based / schemaless 解析
+        val protoBody = ProtobufSchemalessDecoder.decompressIfNeeded(
+            compressed, frame?.body ?: bytes
+        )
 
         val descriptor = if (isRequest) {
             ProtobufSchemaRegistry.findRequestDescriptor(grpcPath)

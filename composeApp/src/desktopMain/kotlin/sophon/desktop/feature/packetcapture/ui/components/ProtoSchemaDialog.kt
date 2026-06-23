@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreateNewFolder
@@ -137,27 +140,47 @@ fun ProtoSchemaDialog(
                 Spacer(Modifier.height(8.dp))
 
                 // 加载状态
-                val statusText = when {
-                    schemaLoadError != null -> "加载错误：$schemaLoadError"
-                    schemaLoadedCount < 0 -> "未加载（添加路径后点击重新加载）"
-                    schemaLoadedCount == 0 -> "未找到可用 Schema（请检查 .proto 文件格式）"
-                    else -> "已加载 $schemaLoadedCount 个消息 Schema"
-                }
-                val statusColor = when {
-                    schemaLoadError != null -> MaterialTheme.colorScheme.error
-                    schemaLoadedCount > 0 -> Color(0xFF4CAF50)
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        statusText,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp
-                        ),
-                        color = statusColor,
-                        modifier = Modifier.weight(1f)
-                    )
+                if (schemaLoadError != null) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val scrollState = rememberScrollState()
+                        Text(
+                            text = schemaLoadError,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp
+                            ),
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier
+                                .heightIn(max = 160.dp)
+                                .verticalScroll(scrollState)
+                                .padding(10.dp)
+                        )
+                    }
+                } else {
+                    val statusText = when {
+                        schemaLoadedCount < 0 -> "未加载（添加路径后点击重新加载）"
+                        schemaLoadedCount == 0 -> "未找到可用 Schema（请检查 .proto 文件格式）"
+                        else -> "已加载 $schemaLoadedCount 个消息 Schema"
+                    }
+                    val statusColor = when {
+                        schemaLoadedCount > 0 -> Color(0xFF4CAF50)
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            statusText,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp
+                            ),
+                            color = statusColor,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         },

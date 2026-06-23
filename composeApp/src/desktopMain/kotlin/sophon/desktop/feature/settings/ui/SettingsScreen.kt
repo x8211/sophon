@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.dp
 import sophon.desktop.core.CACHE_HOME
 import sophon.desktop.generated.AppInfo
 import sophon.desktop.ui.components.DefaultListItem
+import java.awt.Desktop
+import java.io.File
 
 /**
  * 设置页面
@@ -34,6 +36,12 @@ fun SettingsScreen() {
         DefaultListItem(
             title = "缓存路径",
             description = CACHE_HOME,
+            onClick = {
+                val dir = File(CACHE_HOME).also { it.mkdirs() }
+                if (Desktop.isDesktopSupported()) {
+                    Desktop.getDesktop().open(dir)
+                }
+            }
         )
 
         DefaultListItem(

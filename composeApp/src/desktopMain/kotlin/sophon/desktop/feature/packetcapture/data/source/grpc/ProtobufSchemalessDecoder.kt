@@ -1,10 +1,14 @@
 package sophon.desktop.feature.packetcapture.data.source.grpc
 
+import java.io.ByteArrayInputStream
+import java.util.zip.GZIPInputStream
+
 /**
  * 无 Schema 的 gRPC/Protobuf 解码器，不依赖任何外部库。
  *
  * gRPC DATA frame 格式：
  *   [1 byte 压缩标志][4 bytes 消息长度 big-endian][N bytes protobuf 二进制]
+ *   压缩标志为 1 时消息体经过 gzip 压缩（gRPC 默认压缩算法），需先解压再解析 Protobuf。
  *
  * Protobuf wire format（无 schema 可解析骨架）：
  *   每个字段 = varint(field_number << 3 | wire_type) + 值
@@ -37,9 +41,10 @@ internal object ProtobufSchemalessDecoder {
 
     /**
      * 解码完整 gRPC body（含帧头）。
+     * 压缩帧（标志位 = 1）会先进行 gzip 解压，再解析 Protobuf 骨架。
      * 返回多行缩进文本，示例：
      * ```
-     * [压缩: false | 长度: 42 bytes]
+     * [压缩: 是 | 长度: 42 bytes]
      * 1: "hello world"
      * 2: 12345
      * 3 {
@@ -52,8 +57,20 @@ internal object ProtobufSchemalessDecoder {
         val frame = stripGrpcFrame(bytes) ?: return decodeRawBytes(bytes, 0)
         val sb = StringBuilder()
         sb.appendLine("[压缩: ${if (frame.compressed) "是" else "否"} | 长度: ${frame.messageLength} bytes]")
-        sb.append(decodeMessage(frame.body, 0))
+        val body = decompressIfNeeded(frame.compressed, frame.body)
+        sb.append(decodeMessage(body, 0))
         return sb.toString().trimEnd()
+    }
+
+    /**
+     * 若压缩标志为 true，对 body 进行 gzip 解压；解压失败时返回原始字节（容错）。
+     * gRPC 规范默认使用 gzip，其他算法（deflate、snappy 等）暂不支持。
+     */
+    internal fun decompressIfNeeded(compressed: Boolean, body: ByteArray): ByteArray {
+        if (!compressed) return body
+        return runCatching {
+            GZIPInputStream(ByteArrayInputStream(body)).use { it.readBytes() }
+        }.getOrDefault(body)
     }
 
     // ─── 内部实现 ───────────────────────────────────────────────────────────

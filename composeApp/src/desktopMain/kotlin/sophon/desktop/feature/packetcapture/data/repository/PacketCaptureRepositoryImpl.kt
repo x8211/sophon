@@ -51,7 +51,7 @@ class PacketCaptureRepositoryImpl(
 
     override suspend fun installCaToDevice() {
         val caCertPath = CertificateAuthority.getCaCertFile().absolutePath
-        "adb push $caCertPath /sdcard/MicoToolboxCA.crt".simpleShell()
+        "adb push $caCertPath /sdcard/SophonCA.crt".simpleShell()
     }
 
     override fun getCaCertPath(): String = CertificateAuthority.getCaCertFile().absolutePath

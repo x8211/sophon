@@ -168,6 +168,14 @@ find . -name "*.kt" -not -path "*/build/*" -exec sed -i '' \
     -e 's/package sophon\.desktop/package {NEW_PKG_PREFIX}.desktop/g' \
     -e 's/import sophon\.desktop/import {NEW_PKG_PREFIX}.desktop/g' {} \;
 
+# 替换 CA 证书相关命名（CertificateAuthority.kt、PacketCaptureRepositoryImpl.kt、PacketCaptureScreen.kt）
+# 注意：CN=Sophon CA 为首字母大写，grep -r "sophon" 不会捕获，必须单独处理
+find . -name "*.kt" -not -path "*/build/*" -exec sed -i '' \
+    -e 's/CN=Sophon CA, O=Sophon/CN={NEW_APP_NAME} CA, O={NEW_APP_NAME}/g' \
+    -e 's/SophonCA\.crt/{NEW_APP_NAME}CA.crt/g' \
+    -e 's/sophon_ca\.crt/{NEW_PKG_PREFIX}_ca.crt/g' \
+    -e 's/sophon_ca\.key/{NEW_PKG_PREFIX}_ca.key/g' {} \;
+
 # 替换 proguard-rules.pro 中的包引用（如存在）
 find . -name "*.pro" -not -path "*/build/*" -exec sed -i '' \
     's/sophon\.desktop/{NEW_PKG_PREFIX}.desktop/g' {} \; 2>/dev/null || true
@@ -175,11 +183,11 @@ find . -name "*.pro" -not -path "*/build/*" -exec sed -i '' \
 
 > 注意：macOS `sed` 的 `-i` 需要加 `''` 参数（`-i ''`）；`xargs` 在 macOS 沙箱环境下可能报 `sysconf` 错误，改用 `-exec` 更稳定。
 
-**Step 6 完成后执行全量扫描**，除包名格式外，还有三类残留需手动修复：
+**Step 6 完成后执行全量扫描**，除包名格式外，还有多类残留需手动修复。扫描需使用 `-i`（忽略大小写）以捕获 `Sophon`（首字母大写）形式：
 
 ```bash
-# 全量扫描所有文本文件（含 .md、.kts、.toml、.pro）
-grep -r "sophon" {DEST_DIR} \
+# 全量扫描所有文本文件（-i 同时捕获 sophon / Sophon，如 "Sophon CA"、"SophonCA.crt"）
+grep -ri "sophon" {DEST_DIR} \
   --include="*.kt" --include="*.kts" --include="*.toml" \
   --include="*.md" --include="*.pro" --include="*.properties" \
   --exclude-dir=".git" --exclude-dir="build" -l
@@ -194,6 +202,9 @@ grep -r "sophon" {DEST_DIR} \
 | 文件路径注释 | `~/.sophon/proto_paths.json` | sed 替换为 `~/.{NEW_APP_NAME}/` |
 | 文档标题/描述 | `# Sophon 项目编码总纲` | sed 替换为新项目名 |
 | 目录树示例 | `sophon/` 根目录名 | sed 替换 |
+| **CA 证书 DN**（首字母大写） | `CN=Sophon CA, O=Sophon` | 由上方 CA 专项 sed 处理，**grep 扫描须加 `-i`** |
+| **CA 文件名**（小写） | `sophon_ca.crt`, `sophon_ca.key` | 由上方 CA 专项 sed 处理 |
+| **CA adb push 路径 / UI 文案** | `/sdcard/SophonCA.crt` | 由上方 CA 专项 sed 处理 |
 
 ---
 
@@ -252,7 +263,7 @@ cd {DEST_DIR}
 ```
 
 构建成功则任务完成。如有错误：
-1. 执行全量扫描定位残留：`grep -r "sophon" . --include="*.kt" --include="*.kts" --include="*.pro" --exclude-dir=".git" --exclude-dir="build" -l`
+1. 执行全量扫描定位残留：`grep -ri "sophon" . --include="*.kt" --include="*.kts" --include="*.pro" --exclude-dir=".git" --exclude-dir="build" -l`
 2. 检查 `build.gradle.kts` 中是否遗漏了某处 `sophon` 字符串
 3. 检查 `generateAppInfo` task 生成的 `AppInfo.kt` 包名是否已更新（见 Step 4d）
 

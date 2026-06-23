@@ -57,6 +57,35 @@ internal object EmbeddedProtoc {
         return File(candidateRoots.first(), "protoc-*/bin/$binary").absolutePath
     }
 
+    /**
+     * 将 protoc 原始错误输出格式化为可读的错误摘要。
+     *
+     * protoc 失败时通常输出多行：第一行是缺失文件本身（`X.proto: File not found.`），
+     * 后续行是因该文件缺失而级联报错的导入方。直接展示原始输出用户难以定位根因，
+     * 因此优先提取「缺失依赖」部分并格式化为结构化摘要。
+     */
+    private fun formatProtocError(exitCode: Int, rawOutput: String): String {
+        val lines = rawOutput.lines()
+
+        // 提取所有 "X.proto: File not found." 行中的缺失文件名
+        val missingFiles = lines
+            .filter { it.trimStart().endsWith(": File not found.") }
+            .map { it.trim().removeSuffix(": File not found.") }
+            .distinct()
+
+        return if (missingFiles.isNotEmpty()) {
+            buildString {
+                append("缺少以下 Proto 依赖文件（protoc exit $exitCode）：\n")
+                missingFiles.forEach { append("  • $it\n") }
+                append("\n")
+                append("请将包含上述文件的目录添加到已配置路径，\n")
+                append("或将缺失的 .proto 文件放入已配置的目录中。")
+            }
+        } else {
+            "protoc exit $exitCode:\n$rawOutput"
+        }
+    }
+
     /** jpackage 打包后内置二进制可能丢失可执行位，与 [AdbRepositoryImpl.autoFindAdbTool] 保持一致。 */
     private fun ensureExecutable(binary: File): File {
         if (binary.exists() && !binary.canExecute()) {
@@ -121,7 +150,7 @@ internal object EmbeddedProtoc {
             val exitCode = process.waitFor()
 
             if (exitCode != 0) {
-                Result.failure(RuntimeException("protoc exit $exitCode: $output"))
+                Result.failure(RuntimeException(formatProtocError(exitCode, output)))
             } else {
                 Result.success(outFile.readBytes())
             }
