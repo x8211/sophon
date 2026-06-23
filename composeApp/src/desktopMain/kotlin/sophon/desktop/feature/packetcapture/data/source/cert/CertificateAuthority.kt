@@ -60,6 +60,13 @@ object CertificateAuthority {
     fun getCaCertFile(): File = caCertFile
 
     /**
+     * 返回 CA 根证书的 DER 编码字节，用于通过代理内嵌 HTTP 响应向 iOS 设备分发证书。
+     * iOS Safari 在收到 Content-Type: application/x-x509-ca-cert 的响应后，
+     * 会自动弹出"安装描述文件"提示。
+     */
+    fun getCaCertDerBytes(): ByteArray = caCert.encoded
+
+    /**
      * 为指定 host 返回用于前端 TLS 的 SslContext。
      *
      * @param supportH2 是否宣告 h2 ALPN。应与后端实际协商的协议保持一致：

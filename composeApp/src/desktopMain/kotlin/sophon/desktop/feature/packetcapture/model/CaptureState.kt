@@ -15,6 +15,10 @@ data class CaptureState(
     val filterText: String = "",
     val errorMessage: String? = null,
     val showCaInstallGuide: Boolean = false,
+    /** ADB 推送 CA 证书是否成功（true = 已推送到 Android 设备）。 */
+    val caAndroidPushed: Boolean = false,
+    /** 本机 CA 证书文件的绝对路径，用于在对话框中展示给用户。 */
+    val caCertPath: String = "",
     val expandedHosts: Set<String> = emptySet(),
     /** 用户配置的 .proto 路径列表（文件或目录）。 */
     val protoPaths: List<ProtoPath> = emptyList(),

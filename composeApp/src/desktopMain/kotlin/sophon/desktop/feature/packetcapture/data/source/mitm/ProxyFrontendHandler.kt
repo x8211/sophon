@@ -212,6 +212,25 @@ class ProxyFrontendHandler(
     ) {
         if (request.host.isEmpty()) { ctx.close(); return }
 
+        // 魔术域名拦截：iOS 设备在配置代理后，于 Safari 访问 http://sophon.cert，
+        // 代理拦截此请求并直接返回 CA 证书 DER 字节（不转发到真实网络）。
+        // iOS/Safari 识别 Content-Type: application/x-x509-ca-cert 后自动弹出安装向导。
+        // 与 Charles Proxy 的 chls.pro/ssl 机制完全一致。
+        if (request.host.equals("sophon.cert", ignoreCase = true)) {
+            val certBytes = CertificateAuthority.getCaCertDerBytes()
+            val resp = DefaultFullHttpResponse(
+                HttpVersion.HTTP_1_1,
+                HttpResponseStatus.OK,
+                Unpooled.copiedBuffer(certBytes)
+            )
+            resp.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/x-x509-ca-cert")
+            resp.headers().set(HttpHeaderNames.CONTENT_LENGTH, certBytes.size)
+            resp.headers().set(HttpHeaderNames.CONTENT_DISPOSITION, "attachment; filename=\"sophon-ca.crt\"")
+            resp.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE)
+            ctx.writeAndFlush(resp).addListener(ChannelFutureListener.CLOSE)
+            return
+        }
+
         // plain HTTP 无 TLS，握手完成即为此刻，直接插入前端上传限速 handler。
         // 若已存在则跳过（同一连接上多次请求复用场景）。
         proxyServer.currentUploadTrafficShapingHandler?.let { trafficHandler ->

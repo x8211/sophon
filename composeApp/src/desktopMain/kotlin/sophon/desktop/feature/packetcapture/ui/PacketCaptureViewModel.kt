@@ -53,6 +53,7 @@ class PacketCaptureViewModel(
 
     init {
         restoreProtoPaths()
+        _uiState.update { it.copy(caCertPath = repository.getCaCertPath()) }
     }
 
     // ─── 抓包 ───────────────────────────────────────────────────────────────
@@ -164,11 +165,22 @@ class PacketCaptureViewModel(
 
     fun installCaToDevice() {
         viewModelScope.launch(Dispatchers.IO) {
+            // 尝试 ADB 推送（仅对 Android 有效），不论是否成功都弹出引导对话框，
+            // iOS 用户同样可以通过对话框中的步骤完成手动安装。
+            val pushed = runCatching { repository.installCaToDevice(); true }.getOrDefault(false)
+            _uiState.update { it.copy(showCaInstallGuide = true, caAndroidPushed = pushed) }
+        }
+    }
+
+    /**
+     * 在 Finder（macOS）/ 文件管理器（Windows）中定位 CA 证书文件，
+     * 方便用户通过 AirDrop 等方式将其传输至 iOS 设备。
+     */
+    fun revealCaCertInFinder() {
+        viewModelScope.launch(Dispatchers.IO) {
             runCatching {
-                repository.installCaToDevice()
-                _uiState.update { it.copy(showCaInstallGuide = true) }
-            }.onFailure { e ->
-                _uiState.update { it.copy(errorMessage = "CA 安装失败: ${e.message}") }
+                val certFile = File(_uiState.value.caCertPath)
+                java.awt.Desktop.getDesktop().open(certFile.parentFile)
             }
         }
     }
@@ -196,7 +208,7 @@ class PacketCaptureViewModel(
             val suggestedName = _uiState.value.decodedBodies[packet.id]?.fileInfo?.fileName
                 ?: packet.path.substringAfterLast('/').substringBefore('?').ifBlank { "response" }
             val chooser = javax.swing.JFileChooser().apply {
-                selectedFile = java.io.File(suggestedName)
+                selectedFile = File(suggestedName)
                 dialogTitle = "保存响应体"
             }
             if (chooser.showSaveDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
