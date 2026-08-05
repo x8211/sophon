@@ -11,6 +11,7 @@ import kotlinx.serialization.json.encodeToStream
 import sophon.desktop.core.CACHE_HOME
 import sophon.desktop.feature.deeplink.data.source.DeepLinkHistoryModel
 import sophon.desktop.feature.installaab.data.source.AabKeystoreCache
+import sophon.desktop.feature.update.model.UpdatePrefs
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -45,6 +46,10 @@ object DataStoreProvider {
 
     val aabKeystoreCache: DataStore<AabKeystoreCache> by lazy {
         create("aabKeystore.pb", AabKeystoreCache(), AabKeystoreCache.serializer())
+    }
+
+    val updatePrefs: DataStore<UpdatePrefs> by lazy {
+        create("updatePrefs.pb", UpdatePrefs(), UpdatePrefs.serializer())
     }
 
     private fun <T> create(

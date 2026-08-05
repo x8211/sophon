@@ -53,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -70,6 +71,8 @@ import sophon.desktop.feature.packetcapture.ui.PacketCaptureScreen
 import sophon.desktop.feature.proxy.ui.ProxyScreen
 import sophon.desktop.feature.settings.ui.SettingsScreen
 import sophon.desktop.feature.systemmonitor.ui.SystemMonitorScreen
+import sophon.desktop.feature.update.ui.UpdateBanner
+import sophon.desktop.feature.update.ui.UpdateViewModel
 import sophon.desktop.ui.theme.Dimens
 import sophon.desktop.ui.theme.inputChipColorsMd3
 import sophon.desktop.ui.theme.menuItemColorsMd3
@@ -99,6 +102,7 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
     var isExpanded by remember { mutableStateOf(true) }
     val state by Context.stream.collectAsState()
     var sortedItems by remember { mutableStateOf(AppScreen.entries.toList()) }
+    val updateViewModel: UpdateViewModel = viewModel { UpdateViewModel() }
 
     Row(Modifier.fillMaxSize()) {
         // Left Side: Function Entry
@@ -141,6 +145,9 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
                 ),
             )
 
+            // Update Banner: shown below TopAppBar when a new version is available
+            UpdateBanner(viewModel = updateViewModel)
+
             // Middle: Main Feature Area
             Box(modifier = Modifier.weight(1f).background(Color.White)) {
                 NavHost(
@@ -157,7 +164,9 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
                     composable(route = AppScreen.Deeplink.name) { DeepLinkScreen() }
                     composable(route = AppScreen.InstallApk.name) { InstallApkScreen() }
                     composable(route = AppScreen.InstallAab.name) { InstallAabScreen() }
-                    composable(route = AppScreen.Settings.name) { SettingsScreen() }
+                    composable(route = AppScreen.Settings.name) {
+                        SettingsScreen(updateViewModel = updateViewModel)
+                    }
                 }
             }
         }
@@ -312,7 +321,7 @@ private fun getIconForTitle(title: String): ImageVector {
     return when (title) {
         AppScreen.Home.title -> Icons.Default.Home
         AppScreen.InstallApk.title -> Icons.Default.Android
-        AppScreen.InstallAab.title -> Icons.Default.Archive
+        AppScreen.InstallAab.title -> Icons.Default.Android
         AppScreen.Deeplink.title -> Icons.Default.Link
         AppScreen.Proxy.title -> Icons.Default.Build
         AppScreen.AppMonitor.title -> Icons.Default.Dashboard
