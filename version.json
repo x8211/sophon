@@ -1,0 +1,8 @@
+{
+  "version": "1.0.1",
+  "releaseNotes": "初始版本",
+  "downloadUrl": {
+    "macos": "https://github.com/x8211/sophon/releases/download/1.0.0/Sophon-1.0.0.dmg",
+    "windows": ""
+  }
+}
