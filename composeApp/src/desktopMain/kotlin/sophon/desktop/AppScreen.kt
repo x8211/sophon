@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Dashboard
@@ -63,6 +64,7 @@ import sophon.desktop.feature.appmonitor.ui.AppMonitorScreen
 import sophon.desktop.feature.deeplink.ui.DeepLinkScreen
 import sophon.desktop.feature.developer.ui.DeveloperScreen
 import sophon.desktop.feature.device.ui.DeviceInfoScreen
+import sophon.desktop.feature.installaab.ui.InstallAabScreen
 import sophon.desktop.feature.installapk.ui.InstallApkScreen
 import sophon.desktop.feature.packetcapture.ui.PacketCaptureScreen
 import sophon.desktop.feature.proxy.ui.ProxyScreen
@@ -81,6 +83,7 @@ enum class AppScreen(val title: String) {
     Developer("开发者选项"),
     Deeplink("Deeplink"),
     InstallApk("安装Apk"),
+    InstallAab("安装AAB"),
     Settings("设置"),
 }
 
@@ -153,6 +156,7 @@ fun SophonApp(navController: NavHostController = rememberNavController()) {
                     composable(route = AppScreen.Developer.name) { DeveloperScreen() }
                     composable(route = AppScreen.Deeplink.name) { DeepLinkScreen() }
                     composable(route = AppScreen.InstallApk.name) { InstallApkScreen() }
+                    composable(route = AppScreen.InstallAab.name) { InstallAabScreen() }
                     composable(route = AppScreen.Settings.name) { SettingsScreen() }
                 }
             }
@@ -308,6 +312,7 @@ private fun getIconForTitle(title: String): ImageVector {
     return when (title) {
         AppScreen.Home.title -> Icons.Default.Home
         AppScreen.InstallApk.title -> Icons.Default.Android
+        AppScreen.InstallAab.title -> Icons.Default.Archive
         AppScreen.Deeplink.title -> Icons.Default.Link
         AppScreen.Proxy.title -> Icons.Default.Build
         AppScreen.AppMonitor.title -> Icons.Default.Dashboard

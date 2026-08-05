@@ -91,9 +91,10 @@ composeApp/src/desktopMain/kotlin/sophon/desktop/
 
 ---
 
-## 4. Compose UI 通用规范
+## 4. 通用编码规范
 
-Compose 命名与状态、性能优化等通用规范，详见 [docs/compose_rules.md](docs/compose_rules.md)。
+- **Compose UI**：命名与状态、性能优化等规范，详见 [docs/compose_rules.md](docs/compose_rules.md)。
+- **注释规范**：何时写注释、KDoc 约定、禁止冗余注释，详见 [docs/comment_rules.md](docs/comment_rules.md)。
 
 ---
 
@@ -213,14 +214,59 @@ class MyFeatureViewModel(
 
 ---
 
-## 10. 其他规范 (Other Standards)
+## 10. 内置工具打包规范 (Embedded Tools Packaging)
+
+Compose Desktop 提供两种不同的资源机制，**必须根据用途选择正确的一种**：
+
+| 机制 | 目录 | 运行时访问方式 | 适用场景 |
+|---|---|---|---|
+| **类路径资源** | `src/desktopMain/resources/` | `ClassLoader.getResourceAsStream("foo")` 读取为**字节流** | 图标、配置模板、内嵌文本等只需读取内容的资源 |
+| **App 资源** | `src/desktopMain/appResources/` | `System.getProperty("compose.application.resources.dir")` 得到**磁盘目录路径** | 可执行文件、JAR 工具、原生二进制等需要以子进程执行的工具 |
+
+### 需要子进程执行的外部工具，必须使用 `appResources/`
+
+**禁止**将工具放入 `resources/` 然后在运行时提取到临时目录再执行。这是多余的 IO 操作，且破坏项目统一性。
+
+**正确做法**：
+
+1. **放置位置**：
+   - 跨平台工具（如 JAR）→ `appResources/common/tools/`
+   - 平台专属二进制 → `appResources/macos/tools/` 或 `appResources/windows/tools/`
+
+2. **路径解析模式**（参考 [`EmbeddedProtoc.kt`](composeApp/src/desktopMain/kotlin/sophon/desktop/feature/packetcapture/data/source/grpc/EmbeddedProtoc.kt) 和 [`EmbeddedBundletool.kt`](composeApp/src/desktopMain/kotlin/sophon/desktop/feature/installaab/data/source/EmbeddedBundletool.kt)）：
+
+   ```kotlin
+   internal object EmbeddedMyTool {
+       val path: String by lazy {
+           // 打包模式：Compose 将 appResources 平铺到 resources.dir 下
+           val resourcesDir = System.getProperty("compose.application.resources.dir")
+           if (resourcesDir != null) {
+               val f = File(resourcesDir, "tools/my-tool")
+               if (f.exists()) return@lazy f.absolutePath
+           }
+           // 开发模式：直接指向源目录
+           listOf(
+               "composeApp/src/desktopMain/appResources/common/tools/my-tool",
+               "src/desktopMain/appResources/common/tools/my-tool",
+           ).firstOrNull { File(it).exists() } ?: "tools/my-tool"
+       }
+   }
+   ```
+
+3. **可执行权限**：原生二进制在打包后可能丢失执行位，需调用 `file.setExecutable(true)`（参考 `EmbeddedProtoc.ensureExecutable`）；JAR 文件无需此步骤。
+
+4. **build.gradle.kts** 已配置 `appResourcesRootDir`，`common/`、`macos/`、`windows/` 子目录会在对应平台打包时自动合并进安装包，无需额外配置。
+
+---
+
+## 11. 其他规范 (Other Standards)
 
 - **禁止过时方法**: 不要使用过时（Deprecated）的方法，应立即更换为系统或 IDE 建议的新方法（ReplaceWith）。
 - **ProGuard 混淆规则**: release 包混淆配置见 `composeApp/proguard-rules.pro`。
 
 ---
 
-## 11. 功能模块架构文档索引 (Feature Architecture Docs)
+## 12. 功能模块架构文档索引 (Feature Architecture Docs)
 
 各功能模块如含复杂实现（如网络协议、多组件协作、特殊生命周期管理），须在其目录下维护 `ARCHITECTURE.md`，记录分层结构、核心流程与设计约束。
 
