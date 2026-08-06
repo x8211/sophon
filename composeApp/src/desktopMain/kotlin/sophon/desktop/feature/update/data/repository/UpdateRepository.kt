@@ -16,6 +16,12 @@ interface UpdateRepository {
      * @param info 包含平台对应下载链接的版本信息。
      */
     fun downloadUpdate(info: UpdateInfo): Flow<DownloadState>
+
+    /**
+     * 清理已下载的更新安装包，释放磁盘空间。
+     * 删除失败时静默忽略，不打断调用方。
+     */
+    suspend fun cleanupDownloadedUpdates()
 }
 
 sealed class DownloadState {

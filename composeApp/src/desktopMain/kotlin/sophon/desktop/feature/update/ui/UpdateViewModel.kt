@@ -36,7 +36,8 @@ class UpdateViewModel : ViewModel() {
 
     init {
         viewModelScope.launch {
-            // 延迟 10 秒后自动检查，避免干扰应用启动
+            // 启动时清理上次下载残留的更新包，再延迟检查更新
+            repository.cleanupDownloadedUpdates()
             delay(10_000)
             checkForUpdate()
         }
@@ -97,7 +98,7 @@ class UpdateViewModel : ViewModel() {
         _uiState.value = UpdateUiState.Idle
     }
 
-    private suspend fun openInstaller(file: File) = withContext(Dispatchers.Main) {
+    private suspend fun openInstaller(file: File) = withContext(Dispatchers.IO) {
         if (Desktop.isDesktopSupported()) {
             Desktop.getDesktop().open(file)
         }

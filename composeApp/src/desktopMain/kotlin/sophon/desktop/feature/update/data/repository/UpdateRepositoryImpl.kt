@@ -44,7 +44,7 @@ class UpdateRepositoryImpl : UpdateRepository {
         }
 
         val fileName = url.substringAfterLast("/").ifBlank { "Sophon-${info.version}.pkg" }
-        val tempFile = File(System.getProperty("java.io.tmpdir"), fileName)
+        val tempFile = File(updateDownloadDir(), fileName)
 
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.connectTimeout = 10_000
@@ -75,6 +75,15 @@ class UpdateRepositoryImpl : UpdateRepository {
 
         send(DownloadState.Complete(tempFile))
     }.flowOn(Dispatchers.IO)
+
+    override suspend fun cleanupDownloadedUpdates() {
+        withContext(Dispatchers.IO) {
+            updateDownloadDir().listFiles()?.forEach { it.delete() }
+        }
+    }
+
+    private fun updateDownloadDir(): File =
+        File(System.getProperty("java.io.tmpdir"), "sophon-updates").also { it.mkdirs() }
 
     private fun fetchText(urlString: String): String {
         val connection = URL(urlString).openConnection() as HttpURLConnection
