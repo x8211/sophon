@@ -10,6 +10,7 @@
 - HTTP/2 及 gRPC over h2 流量捕获（ALPN 协商，按流配对）
 - 动态生成按域名定制的叶子证书（BouncyCastle）
 - gRPC Protobuf 解码（支持 Schema-based 与无 Schema 启发式两种模式）
+- **gRPC MapLocal Mock**：按 host + path 拦截 gRPC 请求，短路返回自定义响应（无需访问真实后端）
 - 运行时可调的网络限速（`GlobalTrafficShapingHandler`）
 - 实时流量列表展示、关键词过滤、按 Host 分组树形视图、请求详情查看
 - 通过 `adb push` 将 CA 证书推送至 Android 设备并提供安装引导
@@ -23,9 +24,10 @@ packetcapture/
 ├── ARCHITECTURE.md
 ├── model/
 │   ├── CapturedPacket.kt              # 捕获记录（sealed interface：Http / Grpc）
-│   ├── CaptureState.kt                # UI 单一状态源（含过滤、分组、Schema、限速派生属性）
+│   ├── CaptureState.kt                # UI 单一状态源（含过滤、分组、Schema、限速、Mock 派生属性）
 │   ├── ThrottleConfig.kt              # 网络限速配置（预设档位 + 自定义 Kbps）
-│   └── ProtoPath.kt                   # 用户配置的 .proto 路径（持久化）
+│   ├── ProtoPath.kt                   # 用户配置的 .proto 路径（持久化）
+│   └── GrpcMockRule.kt                # gRPC Mock 规则（持久化）
 ├── data/
 │   ├── repository/
 │   │   ├── PacketCaptureRepository.kt     # 数据层对外接口
@@ -50,6 +52,7 @@ packetcapture/
 │       └── grpc/
 │           ├── GrpcDetector.kt            # gRPC 请求识别（Content-Type 判断）
 │           ├── GrpcBodyDecoder.kt         # gRPC body 解码门面（schema-based → schemaless）
+│           ├── GrpcMockRegistry.kt        # Mock 规则注册表（@Volatile 无锁，供 Netty EventLoop 查询）
 │           ├── ProtobufSchemaRegistry.kt  # Schema 构建与 gRPC 方法→消息类型映射
 │           ├── ProtobufSchemalessDecoder.kt # 无 Schema 启发式 Protobuf 帧解析
 │           └── EmbeddedProtoc.kt          # 内置 protoc 封装（编译 .proto → FileDescriptorSet）
@@ -57,11 +60,13 @@ packetcapture/
     ├── PacketCaptureScreen.kt             # 主屏幕 Composable（布局骨架与对话框）
     ├── PacketCaptureViewModel.kt          # 状态容器（StateFlow + viewModelScope）
     └── components/
-        ├── CaptureToolbar.kt              # 工具栏（开始/停止/清空/过滤/CA/限速/Schema）
-        ├── HostTreePanel.kt               # 按 host 分组的树形列表
-        ├── PacketDetailPanel.kt           # 五标签详情面板（含 gRPC body 解码展示）
+        ├── CaptureToolbar.kt              # 工具栏（开始/停止/清空/过滤/CA/限速/Schema/Mock）
+        ├── HostTreePanel.kt               # 按 host 分组的树形列表（MOCK 标记）
+        ├── PacketDetailPanel.kt           # 五标签详情面板（含 gRPC body 解码展示与树形节点视图）
         ├── ProtoSchemaDialog.kt           # Proto 路径管理对话框
-        └── ThrottleDialog.kt             # 限速配置对话框
+        ├── ThrottleDialog.kt              # 限速配置对话框
+        ├── GrpcMockDialog.kt              # gRPC Mock 规则管理对话框（树形内联编辑）
+        └── JsonTreeView.kt                # JSON 折叠树视图组件（只读 + 内联编辑两套实现）
 ```
 
 **外部集成**：`AppScreen.kt` 中注册路由 `AppScreen.PacketCapture`，通过 `PacketCaptureScreen()` 渲染本模块。
@@ -77,7 +82,8 @@ packetcapture/
 │                        界面层 (UI)                           │
 │  PacketCaptureScreen / ViewModel                            │
 │  CaptureToolbar / HostTreePanel / PacketListPanel /         │
-│  PacketDetailPanel / ThrottleDialog / ProtoSchemaDialog     │
+│  PacketDetailPanel / ThrottleDialog / ProtoSchemaDialog /   │
+│  GrpcMockDialog / JsonTreeView                              │
 ├─────────────────────────────────────────────────────────────┤
 │                       数据层 (Data)                          │
 │  PacketCaptureRepository（接口边界）                         │
@@ -110,16 +116,17 @@ packetcapture/
 
 | 类 | 职责 |
 |---|---|
-| `CapturedPacket` | 单条抓包记录；`sealed interface` 含 `Http`（明文/TLS）与 `Grpc` 两个子类型；不可变 `data class`，含 `url`、`isComplete` 等计算属性 |
-| `CaptureState` | UI 单一状态源，聚合 `status`、`port`、`packets`、`selectedPacketId`、`filterText`、`protoPath`、`throttleConfig` 等字段；`filteredPackets`、`groupedByHost` 等为派生属性 |
+| `CapturedPacket` | 单条抓包记录；`sealed interface` 含 `Http`（明文/TLS）与 `Grpc` 两个子类型；不可变 `data class`，含 `url`、`isComplete` 等计算属性；`Grpc` 子类型含 `isMocked` 标记（由 Mock 短路拦截产生） |
+| `CaptureState` | UI 单一状态源，聚合 `status`、`port`、`packets`、`selectedPacketId`、`filterText`、`protoPath`、`throttleConfig`、`mockRules`、`showMockDialog`、`editingMockRule`、`mockEncodeErrors` 等字段；`filteredPackets`、`groupedByHost` 等为派生属性 |
 | `ThrottleConfig` | 网络限速配置；`ThrottlePreset` 枚举对应 5G/4G/3G/2G/自定义档位；`effectiveDownloadBps`/`effectiveUploadBps` 返回对应的 Netty 字节速率 |
 | `ProtoPath` | 用户配置的 `.proto` 文件路径，`@Serializable data class`，持久化至 `{CACHE_HOME}/proto_paths.json` |
+| `GrpcMockRule` | 单条 gRPC Mock 规则，`@Serializable data class`；`host`（支持 `*` 通配）+ `path` 为匹配条件；`responseJson` 为响应报文 JSON 文本；持久化至 `{CACHE_HOME}/mock_rules.json` |
 
 ### 4.2 数据层 (`data/`)
 
 #### Repository
 
-- **`PacketCaptureRepository`**（接口）：声明 `startCapture(port): Flow<CapturedPacket>`、`stopCapture()`、`installCaToDevice()`、`getDeviceProxy()`、`getCaCertPath()`、`updateThrottle(config)` 六个合约。`ViewModel` 仅依赖接口，便于测试替换。
+- **`PacketCaptureRepository`**（接口）：声明 `startCapture(port): Flow<CapturedPacket>`、`stopCapture()`、`installCaToDevice()`、`getDeviceProxy()`、`getCaCertPath()`、`updateThrottle(config)`、`updateMockRules(rules, encodedBodies)` 七个合约。`ViewModel` 仅依赖接口，便于测试替换。
 - **`PacketCaptureRepositoryImpl`**（实现）：
   - 通过 `callbackFlow` 桥接 Netty 回调与 Kotlin 协程。
   - 持有 `MitmProxyDataSource` 引用，负责生命周期管理（`start` / `stop`）与限速转发。
@@ -165,22 +172,25 @@ packetcapture/
 |---|---|
 | `GrpcDetector` | 根据 `Content-Type: application/grpc*` 判断是否为 gRPC 请求；纯函数，不修改流量 |
 | `GrpcBodyDecoder` | 解码门面；优先尝试 `ProtobufSchemaRegistry` schema-based 解析，降级至 `ProtobufSchemalessDecoder` |
-| `ProtobufSchemaRegistry` | 基于用户 `.proto` 文件构建 Schema；调用 `EmbeddedProtoc` 编译；维护 gRPC 方法→消息类型映射；使用 `DynamicMessage` + `JsonFormat` 解码为 JSON |
+| `GrpcMockRegistry` | **单例**。Mock 规则注册表；使用 `@Volatile` + 不可变列表替换（无锁读写）保证线程安全；`ViewModel`（IO 线程）调用 `update()` 写入，Netty EventLoop 线程调用 `findMatch()` 只读查询 |
+| `ProtobufSchemaRegistry` | 基于用户 `.proto` 文件构建 Schema；调用 `EmbeddedProtoc` 编译；维护 gRPC 方法→消息类型映射；使用 `DynamicMessage` + `JsonFormat` 解码为 JSON；`encodeFromJson()` 将 JSON 反向编码为 Protobuf 字节（Mock 响应体使用） |
 | `ProtobufSchemalessDecoder` | 无 Schema 启发式解析；剥离 gRPC 帧头（5 字节）后对 Protobuf wire format 进行字段级拆解 |
 | `EmbeddedProtoc` | 内置 protoc 二进制封装；从 appResources 解析路径，通过 `ProcessBuilder` 编译 `.proto` 为 `FileDescriptorSet` |
 
 ### 4.3 界面层 (`ui/`)
 
-| 类 | 职责 |
-|---|---|
-| `PacketCaptureViewModel` | 持有 `MutableStateFlow<CaptureState>`；`startCapture()` 在 `Dispatchers.IO` 上收集 `Flow<CapturedPacket>`；管理 Proto Schema 持久化（读写 `proto_paths.json`）；`onCleared()` 确保代理随生命周期停止 |
-| `PacketCaptureScreen` | 顶层骨架 Composable：`CaptureToolbar` + `Row(HostTreePanel + PacketListPanel + PacketDetailPanel)`；托管 `ThrottleDialog`、`ProtoSchemaDialog`、CA 安装引导对话框 |
-| `CaptureToolbar` | 状态驱动的「开始」/「停止」按钮；搜索框；CA 安装、限速、Proto Schema 入口 |
-| `HostTreePanel` | 按 host 分组的树形列表，支持展开/收起 |
-| `PacketListPanel` | `LazyColumn` 虚拟滚动；新数据到来时自动 `animateScrollToItem` 至末尾；HTTP Method 与状态码以语义色彩区分 |
-| `PacketDetailPanel` | `ScrollableTabRow` 五标签页（概览/请求头/请求体/响应头/响应体）；gRPC 包体通过 `GrpcBodyDecoder` 解码展示；Body 自动检测 `Content-Type` 进行 JSON 美化 |
-| `ThrottleDialog` | 限速配置对话框；展示预设档位（5G/4G/3G/2G）与自定义输入 |
-| `ProtoSchemaDialog` | `.proto` 路径管理对话框；增删路径后触发 `ProtobufSchemaRegistry` 重新编译 |
+| 类 | 职责                                                                                                                                                                                                                                                                 |
+|---|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `PacketCaptureViewModel` | 持有 `MutableStateFlow<CaptureState>`；`startCapture()` 在 `Dispatchers.IO` 上收集 `Flow<CapturedPacket>`；管理 Proto Schema 持久化（读写 `proto_paths.json`）；管理 Mock 规则增删改启禁用与持久化（读写 `mock_rules.json`）；启动时顺序执行 Schema 加载 → Mock 规则恢复 → 静默重编码，确保规则开机即生效；`onCleared()` 确保代理随生命周期停止 |
+| `PacketCaptureScreen` | 顶层骨架 Composable：`CaptureToolbar` + `Row(HostTreePanel + PacketListPanel + PacketDetailPanel)`；托管 `ThrottleDialog`、`ProtoSchemaDialog`、`GrpcMockDialog`、CA 安装引导对话框                                                                                                  |
+| `CaptureToolbar` | 状态驱动的「开始」/「停止」按钮；搜索框；CA 安装、限速、Proto Schema、**Mock 管理**入口                                                                                                                                                                                                           |
+| `HostTreePanel` | 按 host 分组的树形列表，支持展开/收起；**MOCK 标记**高亮展示被拦截包                                                                                                                                                                                                                         |
+| `PacketListPanel` | `LazyColumn` 虚拟滚动；新数据到来时自动 `animateScrollToItem` 至末尾；HTTP Method 与状态码以语义色彩区分                                                                                                                                                                                       |
+| `PacketDetailPanel` | `ScrollableTabRow` 五标签页（概览/请求头/请求体/响应头/响应体）；gRPC body 有 Schema 时渲染 `JsonTreeView`（折叠树节点），无 Schema 时纯文本降级；Body 自动检测 `Content-Type` 进行 JSON 美化                                                                                                                       |
+| `ThrottleDialog` | 限速配置对话框；展示预设档位（5G/4G/3G/2G）与自定义输入                                                                                                                                                                                                                                  |
+| `ProtoSchemaDialog` | `.proto` 路径管理对话框；增删路径后触发 `ProtobufSchemaRegistry` 重新编译                                                                                                                                                                                                             |
+| `GrpcMockDialog` | gRPC Mock 规则管理对话框；规则列表（启用开关 + 编辑 + 删除）；响应 JSON 以 `JsonTreeEditor` 展示（可折叠树节点内联编辑叶子值，Enter 提交/Esc 取消）；对话框高度自适应窗口高度（85%）                                                                                                                                              |
+| `JsonTreeView` | 共享 JSON 树视图组件；提供两套接口：`JsonTreeView(JsonElement?)` 只读树（`PacketDetailPanel` 使用）、`JsonTreeEditor(jsonText, onJsonChange)` 内联编辑树（`GrpcMockDialog` 使用）                                                                                                                  |
 
 ---
 
@@ -308,7 +318,82 @@ Proto Schema 持久化：`ProtoPath` 列表存储于 `{CACHE_HOME}/proto_paths.j
 
 ---
 
-## 7. 网络限速
+## 7. gRPC MapLocal Mock
+
+### 7.1 概述
+
+Mock 功能实现「MapLocal」模式：对匹配 host + path 的 gRPC 请求，在代理层直接短路返回用户预设的响应体，不访问真实后端。
+
+### 7.2 数据流
+
+```
+用户在 GrpcMockDialog 编辑规则
+  → ViewModel.saveRule(rule)
+       ├── 调用 ProtobufSchemaRegistry.encodeFromJson(path, responseJson)
+       │     将 JSON 文本编码为 Protobuf 二进制（加 5 字节 gRPC 帧头）
+       ├── 将 encodedBody 存入 Map<ruleId, ByteArray>
+       ├── 持久化规则列表 → {CACHE_HOME}/mock_rules.json
+       └── 调用 Repository.updateMockRules(rules, encodedBodies)
+                → GrpcMockRegistry.update()   @Volatile 原子替换
+
+Netty EventLoop 线程处理 HTTP/2 请求
+  → Http2FrontendStreamHandler.onRequestComplete()
+       ├── isGrpc == true
+       │     → GrpcMockRegistry.findMatch(host, path)
+       │          host == "*" 通配，或精确匹配
+       │
+       ├── 命中（MockResult(encodedBody, grpcStatus)）
+       │     → writeMockResponse()
+       │          ① 向客户端写入预编码 DATA 帧（encodedBody）
+       │          ② 写入 HEADERS 帧（grpc-status: N, grpc-message）
+       │          ③ END_STREAM，不建立后端连接
+       │          ④ 上报 CapturedPacket.Grpc(isMocked=true)
+       │
+       └── 未命中 → 正常透传至真实后端
+```
+
+### 7.3 线程安全设计
+
+`GrpcMockRegistry` 采用 **`@Volatile` + 不可变列表原子替换** 策略：
+
+- **写**：`ViewModel`（`Dispatchers.IO`）调用 `update()`，将过滤并预编码的规则列表整体替换。
+- **读**：Netty EventLoop 线程调用 `findMatch()`，读取 `@Volatile` 字段的快照，零锁开销。
+- 无需 `synchronized` 或 `ConcurrentHashMap`，满足高吞吐场景下的快路径查询。
+
+### 7.4 JSON 编辑器设计（JsonTreeEditor）
+
+`JsonTreeEditor` 基于 `kotlinx.serialization.json` 的 `JsonElement` API，实现**不可变路径更新**：
+
+```
+PathSeg = Key(name: String) | Idx(index: Int)   // 路径节点类型
+InlineEditState(path, textValue, hasError)        // 当前编辑状态
+
+点击叶子节点 (JsonPrimitive)
+  → onEditStart(path, initialText)
+       editState = InlineEditState(path, textValue = TextFieldValue(text, selection=all))
+
+用户修改文字（BasicTextField）
+  → onEditTextChange(newValue)
+       editState = editState.copy(textValue = newValue, hasError = false)
+
+Enter / 失焦
+  → onEditCommit(path, rawText)
+       parseRawValue(rawText)   null / true / false / 数字 / "字符串"
+       ├── 成功 → root.updateAtPath(path, newPrimitive)  // 递归创建新 JsonObject/JsonArray
+       │          prettyPrint → onJsonChange(newJson)
+       │          editState = null
+       └── 失败 → editState = editState.copy(hasError = true)  // 边框变红
+
+Escape / 失焦（无法解析）
+  → onEditCancel()
+       editState = null  // 恢复原值
+```
+
+**焦点管理**：`BasicTextField` 通过 `FocusRequester` 在进入编辑态时自动获焦；`onFocusChanged` 内以 `wasFocused` 标记区分「首次渲染触发 isFocused=false」和「真实失焦事件」，防止编辑态立即闪回（已知 Compose 焦点回调时序问题）。
+
+---
+
+## 8. 网络限速
 
 限速通过 Netty `GlobalTrafficShapingHandler` 实现，**在 TLS 握手完成后才插入 pipeline**，作用于解密后的明文流：
 
@@ -319,7 +404,7 @@ Proto Schema 持久化：`ProtoPath` 列表存储于 `{CACHE_HOME}/proto_paths.j
 
 ---
 
-## 8. 外部依赖
+## 9. 外部依赖
 
 | 依赖 | 用途 |
 |---|---|
@@ -333,7 +418,7 @@ Proto Schema 持久化：`ProtoPath` 列表存储于 `{CACHE_HOME}/proto_paths.j
 
 ---
 
-## 9. 设计约束与注意事项
+## 10. 设计约束与注意事项
 
 | 约束 | 说明 |
 |---|---|
@@ -342,6 +427,8 @@ Proto Schema 持久化：`ProtoPath` 列表存储于 `{CACHE_HOME}/proto_paths.j
 | 叶子证书有效期 1 年 | 按 `host|h1`/`host|h2` 缓存在内存，重启后重新生成 |
 | HTTP/2 ALPN 一致性 | 前端 `SslContext.supportH2` 须与后端 ALPN 结果一致，否则触发 FRAME_SIZE_ERROR |
 | gRPC 流式支持限制 | 当前实现缓冲请求帧至 END_STREAM 再转发，客户端流式/双向流式调用在 END_STREAM 前阻塞（已知限制） |
+| Mock 依赖 Schema | `GrpcMockRegistry.update()` 中的 `encodeFromJson()` 依赖 `ProtobufSchemaRegistry` 已加载对应 `.proto`；若 Schema 未就绪，编码失败的规则将被跳过（`encodedBodies` 中无对应 id），不影响其他规则生效 |
+| Mock 仅限 HTTP/2 gRPC | 当前 Mock 拦截仅在 `Http2FrontendStreamHandler` 中实现，HTTP/1.1 gRPC-Web 请求不受 Mock 影响 |
 | HTTPS 抓包前提 | 客户端（如 Android 设备）必须安装并信任自签 CA 证书，否则前端 TLS 握手失败 |
 | EventLoop 线程约束 | `BackendChannelManager` 的所有方法须在同一 EventLoop 线程调用（`withChannel`/`donateChannel`）；`NettyExtensions` 的 `onSuccess` 回调在 EventLoop 线程同步执行，严禁阻塞操作 |
 | 线程安全 | Netty pipeline 回调在 EventLoop 线程执行；`callbackFlow.trySend()` 是线程安全的；`ConcurrentHashMap` 保护 `SslContext` 证书缓存 |

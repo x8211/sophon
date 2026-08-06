@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Badge
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,8 +32,16 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -78,6 +88,7 @@ fun HostTreePanel(
     onToggleHost: (String) -> Unit,
     onSelectPacket: (CapturedPacket) -> Unit,
     onFilterChange: (String) -> Unit,
+    onAddMockFromPacket: ((CapturedPacket.Grpc) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(modifier = modifier, color = MaterialTheme.colorScheme.surface) {
@@ -121,7 +132,10 @@ fun HostTreePanel(
                                 PacketTreeItem(
                                     packet = packet,
                                     isSelected = packet.id == selectedPacketId,
-                                    onClick = { onSelectPacket(packet) }
+                                    onClick = { onSelectPacket(packet) },
+                                    onAddMock = if (packet is CapturedPacket.Grpc) {
+                                        { onAddMockFromPacket?.invoke(packet) }
+                                    } else null
                                 )
                                 HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFEEEEEE))
                             }
@@ -210,28 +224,39 @@ private fun HostGroupHeader(
     HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun PacketTreeItem(
     packet: CapturedPacket,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onAddMock: (() -> Unit)? = null,
 ) {
     val bgColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
     val accentColor = MaterialTheme.colorScheme.primary
+    var showContextMenu by remember { mutableStateOf(false) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(bgColor)
-            .then(
-                if (isSelected) Modifier.drawBehind {
-                    drawRect(color = accentColor, size = Size(6f, size.height))
-                } else Modifier
-            )
-            .clickable(onClick = onClick)
-            .padding(start = if (isSelected) 34.dp else 28.dp, end = 8.dp, top = 5.dp, bottom = 5.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(bgColor)
+                .then(
+                    if (isSelected) Modifier.drawBehind {
+                        drawRect(color = accentColor, size = Size(6f, size.height))
+                    } else Modifier
+                )
+                .clickable(onClick = onClick)
+                .then(
+                    if (onAddMock != null) {
+                        Modifier.onPointerEvent(PointerEventType.Press) {
+                            if (it.buttons.isSecondaryPressed) showContextMenu = true
+                        }
+                    } else Modifier
+                )
+                .padding(start = if (isSelected) 34.dp else 28.dp, end = 8.dp, top = 5.dp, bottom = 5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
         // 协议/方法标记
         val methodLabel = if (packet is CapturedPacket.Grpc) "gRPC" else packet.method
         val methodColor = if (packet is CapturedPacket.Grpc) grpcTreeColor
@@ -247,6 +272,26 @@ private fun PacketTreeItem(
             color = methodColor,
             modifier = Modifier.width(36.dp)
         )
+
+        // MOCK 徽章
+        if (packet is CapturedPacket.Grpc && packet.isMocked) {
+            Spacer(Modifier.width(2.dp))
+            Text(
+                text = "MOCK",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 8.sp
+                ),
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier
+                    .background(
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(2.dp)
+                    )
+                    .padding(horizontal = 3.dp, vertical = 1.dp)
+            )
+        }
 
         Spacer(Modifier.width(4.dp))
 
@@ -294,5 +339,21 @@ private fun PacketTreeItem(
                 textAlign = androidx.compose.ui.text.style.TextAlign.End
             )
         }
-    }
+        }  // end Row
+
+        if (onAddMock != null) {
+            DropdownMenu(
+                expanded = showContextMenu,
+                onDismissRequest = { showContextMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("添加为 Mock 规则", style = MaterialTheme.typography.bodySmall) },
+                    onClick = {
+                        showContextMenu = false
+                        onAddMock()
+                    }
+                )
+            }
+        }
+    }  // end Box
 }

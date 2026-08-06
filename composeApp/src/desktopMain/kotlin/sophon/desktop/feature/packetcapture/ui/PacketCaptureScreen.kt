@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import sophon.desktop.feature.packetcapture.ui.components.CaptureToolbar
 import sophon.desktop.feature.packetcapture.ui.components.EmptyDetailPanel
+import sophon.desktop.feature.packetcapture.ui.components.GrpcMockDialog
 import sophon.desktop.feature.packetcapture.ui.components.HostTreePanel
 import sophon.desktop.feature.packetcapture.ui.components.PacketDetailPanel
 import sophon.desktop.feature.packetcapture.ui.components.ProtoSchemaDialog
@@ -58,12 +59,14 @@ fun PacketCaptureScreen(
         CaptureToolbar(
             status = state.status,
             throttleConfig = state.throttleConfig,
+            mockRuleCount = state.mockRules.count { it.enabled },
             onStart = { viewModel.startCapture() },
             onStop = { viewModel.stopCapture() },
             onClear = { viewModel.clearPackets() },
             onInstallCa = { viewModel.installCaToDevice() },
             onOpenProtoManager = { viewModel.openProtoManager() },
             onOpenThrottleDialog = { viewModel.openThrottleDialog() },
+            onOpenMockDialog = { viewModel.openMockDialog() },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -78,6 +81,7 @@ fun PacketCaptureScreen(
                 onToggleHost = { viewModel.toggleHostExpanded(it) },
                 onSelectPacket = { viewModel.selectPacket(it) },
                 onFilterChange = { viewModel.updateFilter(it) },
+                onAddMockFromPacket = { viewModel.addMockFromPacket(it) },
                 modifier = Modifier
                     .weight(0.4f)
                     .fillMaxHeight()
@@ -143,6 +147,19 @@ fun PacketCaptureScreen(
             onRemoveProtoPath = { viewModel.removeProtoPath(it) },
             onReload = { viewModel.reloadProtoSchema() },
             onDismiss = { viewModel.closeProtoManager() }
+        )
+    }
+
+    if (state.showMockDialog) {
+        GrpcMockDialog(
+            rules = state.mockRules,
+            encodeErrors = state.mockEncodeErrors,
+            editingRule = state.editingMockRule,
+            onSave = { viewModel.saveMockRule(it) },
+            onDelete = { viewModel.deleteMockRule(it) },
+            onToggle = { viewModel.toggleMockRule(it) },
+            onStartEdit = { viewModel.startEditMockRule(it) },
+            onDismiss = { viewModel.closeMockDialog() }
         )
     }
 }

@@ -6,7 +6,9 @@ import kotlinx.coroutines.flow.callbackFlow
 import sophon.desktop.core.Shell.simpleShell
 import sophon.desktop.feature.packetcapture.data.source.MitmProxyDataSource
 import sophon.desktop.feature.packetcapture.data.source.cert.CertificateAuthority
+import sophon.desktop.feature.packetcapture.data.source.grpc.GrpcMockRegistry
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
+import sophon.desktop.feature.packetcapture.model.GrpcMockRule
 import sophon.desktop.feature.packetcapture.model.ThrottleConfig
 import sophon.desktop.feature.proxy.data.repository.ProxyRepository
 import sophon.desktop.feature.proxy.data.repository.ProxyRepositoryImpl
@@ -59,5 +61,9 @@ class PacketCaptureRepositoryImpl(
     override fun updateThrottle(config: ThrottleConfig) {
         pendingThrottleConfig = config
         proxyServer?.updateThrottle(config)
+    }
+
+    override fun updateMockRules(rules: List<GrpcMockRule>, encodedBodies: Map<String, ByteArray>) {
+        GrpcMockRegistry.update(rules, encodedBodies)
     }
 }

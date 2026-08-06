@@ -47,12 +47,14 @@ import sophon.desktop.ui.theme.Dimens
 fun CaptureToolbar(
     status: CaptureStatus,
     throttleConfig: ThrottleConfig,
+    mockRuleCount: Int,
     onStart: () -> Unit,
     onStop: () -> Unit,
     onClear: () -> Unit,
     onInstallCa: () -> Unit,
     onOpenProtoManager: () -> Unit,
     onOpenThrottleDialog: () -> Unit,
+    onOpenMockDialog: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -129,6 +131,21 @@ fun CaptureToolbar(
                 ),
             )
 
+            FilterChip(
+                selected = mockRuleCount > 0,
+                onClick = onOpenMockDialog,
+                label = {
+                    Text(
+                        if (mockRuleCount > 0) "Mock ($mockRuleCount)" else "Mock",
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                ),
+            )
+
             Spacer(Modifier.weight(1f))
 
             TextButton(onClick = onInstallCa) {
@@ -164,12 +181,14 @@ private fun CaptureToolbarStoppedPreview() {
         CaptureToolbar(
             status = CaptureStatus.STOPPED,
             throttleConfig = ThrottleConfig(),
+            mockRuleCount = 0,
             onStart = {},
             onStop = {},
             onClear = {},
             onInstallCa = {},
             onOpenProtoManager = {},
             onOpenThrottleDialog = {},
+            onOpenMockDialog = {},
         )
     }
 }
@@ -181,12 +200,14 @@ private fun CaptureToolbarRunningPreview() {
         CaptureToolbar(
             status = CaptureStatus.RUNNING,
             throttleConfig = ThrottleConfig(preset = ThrottlePreset.FAST_3G),
+            mockRuleCount = 2,
             onStart = {},
             onStop = {},
             onClear = {},
             onInstallCa = {},
             onOpenProtoManager = {},
             onOpenThrottleDialog = {},
+            onOpenMockDialog = {},
         )
     }
 }

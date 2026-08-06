@@ -115,6 +115,33 @@ internal object ProtobufSchemaRegistry {
         decodeToJsonWithError(bytes, descriptor).first
 
     /**
+     * 将 JSON 字符串编码为 protobuf bytes，再包 5 字节 gRPC 帧头（未压缩）。
+     * 依赖 [findResponseDescriptor] 通过 gRPC path 查找消息类型。
+     *
+     * @param json      用户编辑的 JSON 响应体
+     * @param grpcPath  gRPC 路径（`/pkg.Service/Method`）
+     * @return 成功时包含带 gRPC 帧头的 bytes；失败时包含错误信息
+     */
+    fun encodeFromJson(json: String, grpcPath: String): Result<ByteArray> {
+        val descriptor = findResponseDescriptor(grpcPath)
+            ?: return Result.failure(IllegalStateException("未找到对应的 Proto 描述符，请先加载 .proto 文件"))
+        return runCatching {
+            val builder = DynamicMessage.newBuilder(descriptor)
+            JsonFormat.parser().ignoringUnknownFields().merge(json, builder)
+            val protoBytes = builder.build().toByteArray()
+            // 包 5 字节 gRPC 帧头：[0x00][4B BE length][proto bytes]
+            val framed = ByteArray(5 + protoBytes.size)
+            framed[0] = 0x00
+            framed[1] = (protoBytes.size shr 24 and 0xFF).toByte()
+            framed[2] = (protoBytes.size shr 16 and 0xFF).toByte()
+            framed[3] = (protoBytes.size shr 8 and 0xFF).toByte()
+            framed[4] = (protoBytes.size and 0xFF).toByte()
+            System.arraycopy(protoBytes, 0, framed, 5, protoBytes.size)
+            framed
+        }
+    }
+
+    /**
      * 解析 protobuf bytes 为 JSON，同时返回失败原因（供诊断日志使用）。
      * @return Pair(json, errorMessage)，json 为 null 时 errorMessage 说明失败原因
      */

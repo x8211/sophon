@@ -22,6 +22,7 @@ import sophon.desktop.feature.packetcapture.model.CaptureStatus
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
 import sophon.desktop.feature.packetcapture.model.DecodedBody
 import sophon.desktop.feature.packetcapture.model.GrpcDecoded
+import sophon.desktop.feature.packetcapture.model.GrpcMockRule
 import sophon.desktop.feature.packetcapture.model.ProtoPath
 import sophon.desktop.feature.packetcapture.model.ThrottleConfig
 import sophon.desktop.feature.packetcapture.model.fileDownloadInfo
@@ -48,11 +49,18 @@ class PacketCaptureViewModel(
     private var decodeJob: Job? = null
 
     private val protoPathsFile = File("$CACHE_HOME/proto_paths.json")
+    private val mockRulesFile = File("$CACHE_HOME/grpc_mock_rules.json")
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
     private val prettyJson = Json { prettyPrint = true }
 
     init {
-        restoreProtoPaths()
+        // 启动时按顺序：恢复 proto 路径→加载 Schema→恢复规则→编码，保证规则立即生效
+        viewModelScope.launch(Dispatchers.IO) {
+            restoreProtoPathsInternal()
+            restoreMockRulesInternal()
+            // Schema 已加载：重编码使规则立即生效；Schema 缺失时编码失败的规则静默跳过（不报错）
+            reEncodeMockRulesQuiet()
+        }
         _uiState.update { it.copy(caCertPath = repository.getCaCertPath()) }
     }
 
@@ -272,7 +280,7 @@ class PacketCaptureViewModel(
     }
 
     /**
-     * 强制重新加载所有已配置路径的 Schema。
+     * 强制重新加载所有已配置路径的 Schema。Schema 加载完成后自动重编 Mock 规则。
      */
     fun reloadProtoSchema() {
         val paths = _uiState.value.protoPaths
@@ -284,25 +292,29 @@ class PacketCaptureViewModel(
                     schemaLoadError = result.error
                 )
             }
+            // Schema 更新后重新编码所有 mock 规则
+            reEncodeMockRules()
         }
     }
 
     // ─── 持久化 ─────────────────────────────────────────────────────────────
 
     private fun restoreProtoPaths() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val paths = runCatching {
-                if (protoPathsFile.exists()) {
-                    json.decodeFromString<List<ProtoPath>>(protoPathsFile.readText())
-                } else emptyList()
-            }.getOrDefault(emptyList())
+        viewModelScope.launch(Dispatchers.IO) { restoreProtoPathsInternal() }
+    }
 
-            if (paths.isNotEmpty()) {
-                _uiState.update { it.copy(protoPaths = paths) }
-                val result = ProtobufSchemaRegistry.load(paths)
-                _uiState.update {
-                    it.copy(schemaLoadedCount = result.loadedCount, schemaLoadError = result.error)
-                }
+    private suspend fun restoreProtoPathsInternal() {
+        val paths = runCatching {
+            if (protoPathsFile.exists()) {
+                json.decodeFromString<List<ProtoPath>>(protoPathsFile.readText())
+            } else emptyList()
+        }.getOrDefault(emptyList())
+
+        if (paths.isNotEmpty()) {
+            _uiState.update { it.copy(protoPaths = paths) }
+            val result = ProtobufSchemaRegistry.load(paths)
+            _uiState.update {
+                it.copy(schemaLoadedCount = result.loadedCount, schemaLoadError = result.error)
             }
         }
     }
@@ -316,6 +328,170 @@ class PacketCaptureViewModel(
                     _uiState.value.protoPaths
                 ))
             }
+        }
+    }
+
+    // ─── gRPC Mock 管理 ──────────────────────────────────────────────────────
+
+    fun openMockDialog() {
+        _uiState.update { it.copy(showMockDialog = true, editingMockRule = null) }
+    }
+
+    fun closeMockDialog() {
+        _uiState.update { it.copy(showMockDialog = false, editingMockRule = null) }
+    }
+
+    fun startEditMockRule(rule: GrpcMockRule?) {
+        _uiState.update { it.copy(editingMockRule = rule) }
+    }
+
+    /**
+     * 保存（新增或更新）一条 Mock 规则。立即尝试编码并推送到 [GrpcMockRegistry]。
+     * [fromPacket] 为 true 时表示从抓包列表快捷添加，自动打开对话框并选中新建规则。
+     */
+    fun saveMockRule(rule: GrpcMockRule, fromPacket: Boolean = false) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val encodeResult = ProtobufSchemaRegistry.encodeFromJson(rule.responseJson, rule.path)
+            val encodeError = encodeResult.exceptionOrNull()?.message
+            val encodedBody = encodeResult.getOrNull()
+
+            _uiState.update { s ->
+                val existingById = s.mockRules.any { it.id == rule.id }
+                val newRules = when {
+                    existingById ->
+                        // 按 ID 更新（普通编辑保存）
+                        s.mockRules.map { if (it.id == rule.id) rule else it }
+                    s.mockRules.any { it.host == rule.host && it.path == rule.path } ->
+                        // 相同 host+path 已存在（重复添加），原地替换以去重
+                        s.mockRules.map { if (it.host == rule.host && it.path == rule.path) rule.copy(id = it.id) else it }
+                    else ->
+                        s.mockRules + rule
+                }
+                val newErrors = if (encodeError != null) s.mockEncodeErrors + (rule.id to encodeError)
+                                else s.mockEncodeErrors - rule.id
+                s.copy(
+                    mockRules = newRules,
+                    mockEncodeErrors = newErrors,
+                    editingMockRule = null,
+                    showMockDialog = if (fromPacket) true else s.showMockDialog,
+                )
+            }
+            saveMockRulesToDisk()
+            pushMockRulesToRegistry()
+        }
+    }
+
+    fun deleteMockRule(ruleId: String) {
+        _uiState.update { s ->
+            s.copy(
+                mockRules = s.mockRules.filter { it.id != ruleId },
+                mockEncodeErrors = s.mockEncodeErrors - ruleId,
+                editingMockRule = if (s.editingMockRule?.id == ruleId) null else s.editingMockRule,
+            )
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            saveMockRulesToDisk()
+            pushMockRulesToRegistry()
+        }
+    }
+
+    fun toggleMockRule(ruleId: String) {
+        _uiState.update { s ->
+            s.copy(mockRules = s.mockRules.map {
+                if (it.id == ruleId) it.copy(enabled = !it.enabled) else it
+            })
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            saveMockRulesToDisk()
+            pushMockRulesToRegistry()
+        }
+    }
+
+    /**
+     * 从已选中的 gRPC 抓包记录快捷创建 Mock 规则，预填 host/path 和响应 JSON。
+     */
+    fun addMockFromPacket(packet: CapturedPacket.Grpc) {
+        val decodedBody = _uiState.value.decodedBodies[packet.id]
+        val prefilledJson = decodedBody?.grpcResponse
+            ?.let { decoded ->
+                val raw = decoded.formattedBody ?: decoded.body ?: return@let null
+                // formattedBody 以 "[压缩: ... | 长度: ... bytes]\n" 开头，剥掉第一行只保留 JSON
+                if (raw.startsWith("[")) raw.substringAfter('\n') else raw
+            }
+            ?: "{}"
+        // 若已存在相同 host+path 的规则，直接编辑旧条目（更新 JSON），避免重复
+        val existing = _uiState.value.mockRules.find { it.host == packet.host && it.path == packet.path }
+        val rule = existing?.copy(responseJson = prefilledJson)
+            ?: GrpcMockRule(host = packet.host, path = packet.path, responseJson = prefilledJson)
+        _uiState.update { it.copy(editingMockRule = rule, showMockDialog = true) }
+    }
+
+    /** 从磁盘恢复 Mock 规则（仅加载到 state，不做编码）。 */
+    private fun restoreMockRules() {
+        viewModelScope.launch(Dispatchers.IO) { restoreMockRulesInternal() }
+    }
+
+    private suspend fun restoreMockRulesInternal() {
+        val rules = runCatching {
+            if (mockRulesFile.exists())
+                json.decodeFromString<List<GrpcMockRule>>(mockRulesFile.readText())
+            else emptyList()
+        }.getOrDefault(emptyList())
+        if (rules.isEmpty()) return
+        _uiState.update { it.copy(mockRules = rules) }
+    }
+
+    /** 对当前所有规则重新编码（Schema 刷新后调用）。 */
+    private fun reEncodeMockRules() {
+        val rules = _uiState.value.mockRules
+        val errors = mutableMapOf<String, String>()
+        val encoded = mutableMapOf<String, ByteArray>()
+        for (rule in rules) {
+            val result = ProtobufSchemaRegistry.encodeFromJson(rule.responseJson, rule.path)
+            result.onSuccess { encoded[rule.id] = it }
+            result.onFailure { errors[rule.id] = it.message ?: "编码失败" }
+        }
+        _uiState.update { it.copy(mockEncodeErrors = errors) }
+        repository.updateMockRules(rules, encoded)
+    }
+
+    /**
+     * 启动时静默编码：规则推入 Registry 使其立即生效；
+     * 编码失败（Schema 缺失/JSON 非法）的规则静默跳过，不写入 UI 错误。
+     * 错误提示留给用户主动打开 Mock 对话框或重载 Schema 时再触发。
+     */
+    private fun reEncodeMockRulesQuiet() {
+        val rules = _uiState.value.mockRules
+        if (rules.isEmpty()) return
+        val encoded = mutableMapOf<String, ByteArray>()
+        for (rule in rules) {
+            ProtobufSchemaRegistry.encodeFromJson(rule.responseJson, rule.path)
+                .onSuccess { encoded[rule.id] = it }
+        }
+        repository.updateMockRules(rules, encoded)
+    }
+
+    /** 将 [_uiState] 中当前规则推送到 Registry（不重编码，仅用于 toggle/delete 后的快速同步）。 */
+    private fun pushMockRulesToRegistry() {
+        val rules = _uiState.value.mockRules
+        val errors = mutableMapOf<String, String>()
+        val encoded = mutableMapOf<String, ByteArray>()
+        for (rule in rules) {
+            val result = ProtobufSchemaRegistry.encodeFromJson(rule.responseJson, rule.path)
+            result.onSuccess { encoded[rule.id] = it }
+            result.onFailure { errors[rule.id] = it.message ?: "编码失败" }
+        }
+        _uiState.update { s -> s.copy(mockEncodeErrors = errors) }
+        repository.updateMockRules(rules, encoded)
+    }
+
+    private fun saveMockRulesToDisk() {
+        runCatching {
+            mockRulesFile.parentFile?.mkdirs()
+            mockRulesFile.writeText(json.encodeToString(
+                kotlinx.serialization.builtins.ListSerializer(GrpcMockRule.serializer()),
+                _uiState.value.mockRules
+            ))
         }
     }
 
@@ -349,25 +525,26 @@ class PacketCaptureViewModel(
             val grpcReq = packet.requestBody?.let { body ->
                 runCatching {
                     val result = GrpcBodyDecoder.decode(body, packet.path, isRequest = true)
-                    val formatted = if (result.isSchemaApplied) {
-                        runCatching {
-                            val element = Json.parseToJsonElement(result.body)
-                            prettyJson.encodeToString(JsonElement.serializer(), element)
-                        }.getOrNull()
-                    } else null
-                    GrpcDecoded(result.body, result.isSchemaApplied, formatted)
+                    val (element, formatted) = if (result.isSchemaApplied) {
+                        // result.body 带帧头前缀，剥掉第一行再解析
+                        val jsonText = if (result.body.startsWith("[")) result.body.substringAfter('\n') else result.body
+                        val el = runCatching { Json.parseToJsonElement(jsonText) }.getOrNull()
+                        val fmt = el?.let { runCatching { prettyJson.encodeToString(JsonElement.serializer(), it) }.getOrNull() }
+                        el to fmt
+                    } else null to null
+                    GrpcDecoded(result.body, result.isSchemaApplied, formatted, element)
                 }.getOrNull()
             }
             val grpcResp = packet.responseBody?.let { body ->
                 runCatching {
                     val result = GrpcBodyDecoder.decode(body, packet.path, isRequest = false)
-                    val formatted = if (result.isSchemaApplied) {
-                        runCatching {
-                            val element = Json.parseToJsonElement(result.body)
-                            prettyJson.encodeToString(JsonElement.serializer(), element)
-                        }.getOrNull()
-                    } else null
-                    GrpcDecoded(result.body, result.isSchemaApplied, formatted)
+                    val (element, formatted) = if (result.isSchemaApplied) {
+                        val jsonText = if (result.body.startsWith("[")) result.body.substringAfter('\n') else result.body
+                        val el = runCatching { Json.parseToJsonElement(jsonText) }.getOrNull()
+                        val fmt = el?.let { runCatching { prettyJson.encodeToString(JsonElement.serializer(), it) }.getOrNull() }
+                        el to fmt
+                    } else null to null
+                    GrpcDecoded(result.body, result.isSchemaApplied, formatted, element)
                 }.getOrNull()
             }
             return DecodedBody(

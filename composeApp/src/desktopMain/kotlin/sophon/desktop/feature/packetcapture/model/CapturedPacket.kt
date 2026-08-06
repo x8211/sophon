@@ -130,6 +130,8 @@ sealed interface CapturedPacket {
         override val durationMs: Long? = null,
         override val error: String? = null,
         override val responseBodyFile: java.io.File? = null,
+        /** 此响应由 Mock 规则拦截，未访问真实后端。 */
+        val isMocked: Boolean = false,
     ) : CapturedPacket {
         /** 从路径解析的 gRPC 服务名，格式 `/{ServiceName}/{MethodName}` → `ServiceName`。 */
         val service: String? get() {

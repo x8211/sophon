@@ -26,6 +26,8 @@ data class GrpcDecoded(
     val isSchemaApplied: Boolean,
     /** 当 [isSchemaApplied] 为 true 时，对 [body] 做 pretty-print 后的 JSON 字符串（后台线程预计算）。 */
     val formattedBody: String? = null,
+    /** 当 [isSchemaApplied] 为 true 时，预解析的 [JsonElement]，供 JSON 折叠树视图使用。 */
+    val parsedElement: JsonElement? = null,
 )
 
 /**

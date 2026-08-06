@@ -88,14 +88,6 @@ private fun detailStatusColor(statusCode: Int?): Color = when {
     else -> Color(0xFF9C27B0)
 }
 
-// JSON 树视图中各节点共用的文字样式（在 Composable 上下文中读取 MaterialTheme）
-private val jsonMonoStyle
-    @Composable get() = MaterialTheme.typography.bodySmall.copy(
-        fontFamily = FontFamily.Monospace,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
-    )
-
 /**
  * Charles Proxy 风格的请求详情面板。
  *
@@ -220,6 +212,13 @@ private fun OverviewTab(packet: CapturedPacket) {
                 OverviewRow("RPC 方法", packet.rpcMethod ?: "-")
                 OverviewRow("URL", packet.url)
                 OverviewRow("协议", "HTTP/2 (gRPC)")
+                if (packet.isMocked) {
+                    OverviewRow(
+                        label = "Mock",
+                        value = "此响应由 Mock 规则拦截，未访问真实后端",
+                        valueColor = MaterialTheme.colorScheme.tertiary
+                    )
+                }
             } else {
                 OverviewRow("方法", packet.method)
                 OverviewRow("URL", packet.url)
@@ -287,31 +286,48 @@ private fun ContentsTab(
         Column(modifier = Modifier.weight(0.4f).fillMaxWidth()) {
             if (isGrpc) {
                 val grpcReqDecoded = decoded?.grpcRequest
-                Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "请求 Proto",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (grpcReqDecoded != null) {
-                            val schemaLabel = if (grpcReqDecoded.isSchemaApplied) "Schema" else "无 Schema"
-                            val schemaColor = if (grpcReqDecoded.isSchemaApplied) Color(0xFF4CAF50) else Color(0xFF9E9E9E)
-                            Text(
-                                text = schemaLabel,
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                color = schemaColor
-                            )
+                var grpcRequestTab by remember(packet.id) { mutableIntStateOf(1) }
+                ScrollableTabRow(
+                    selectedTabIndex = grpcRequestTab,
+                    edgePadding = 0.dp,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    divider = {}
+                ) {
+                    Tab(
+                        selected = grpcRequestTab == 0,
+                        onClick = { grpcRequestTab = 0 },
+                        text = { Text("请求头", style = MaterialTheme.typography.labelSmall) }
+                    )
+                    Tab(
+                        selected = grpcRequestTab == 1,
+                        onClick = { grpcRequestTab = 1 },
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("请求 Proto", style = MaterialTheme.typography.labelSmall)
+                                if (grpcReqDecoded != null) {
+                                    Spacer(Modifier.width(4.dp))
+                                    val schemaLabel = if (grpcReqDecoded.isSchemaApplied) "Schema" else "无 Schema"
+                                    val schemaColor = if (grpcReqDecoded.isSchemaApplied) Color(0xFF4CAF50) else Color(0xFF9E9E9E)
+                                    Text(
+                                        text = schemaLabel,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                        color = schemaColor
+                                    )
+                                }
+                            }
                         }
-                    }
+                    )
                 }
                 HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                // 使用后台预计算的 formattedBody（schema 已应用时）或原始 body
-                BodySection(grpcReqDecoded?.formattedBody ?: grpcReqDecoded?.body, formatAsJson = false)
+                when (grpcRequestTab) {
+                    0 -> RequestHeadersSection(packet.requestHeaders)
+                    // Schema 已应用时使用树形视图，否则纯文本
+                    else -> if (grpcReqDecoded?.isSchemaApplied == true) {
+                        JsonTreeView(grpcReqDecoded.parsedElement)
+                    } else {
+                        BodySection(grpcReqDecoded?.body, formatAsJson = false)
+                    }
+                }
             } else {
                 val queryParams = remember(packet.id) { parseQueryParams(packet.path) }
                 val requestTabs = remember(packet.id) {
@@ -379,8 +395,12 @@ private fun ContentsTab(
                             val grpcRespDecoded = decoded?.grpcResponse
                             when (responseTab) {
                                 0 -> ResponseHeadersSection(packet.responseHeaders)
-                                // 使用后台预计算的 formattedBody（schema 已应用时）或原始 body
-                                1 -> BodySection(grpcRespDecoded?.formattedBody ?: grpcRespDecoded?.body, formatAsJson = false)
+                                // Schema 已应用时使用树形视图，否则纯文本
+                                1 -> if (grpcRespDecoded?.isSchemaApplied == true) {
+                                    JsonTreeView(grpcRespDecoded.parsedElement)
+                                } else {
+                                    BodySection(grpcRespDecoded?.body, formatAsJson = false)
+                                }
                                 2 -> BodySection(decoded?.responseText, formatAsJson = false)
                                 else -> BodySection(null, formatAsJson = false)
                             }
@@ -501,7 +521,8 @@ private fun HeaderRow(key: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.Top,
     ) {
         Text(
             text = key,
@@ -682,152 +703,6 @@ private fun LargeBodyFallback(text: String?, hint: String) {
 
 /** body 超过此字符数时跳过 JSON 树渲染，降级为纯文本。 */
 private const val LARGE_BODY_LIMIT = 200_000
-
-// ─────────────────────────────────────────────────────────────────────────────
-// JSON 折叠树视图
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * JSON 折叠树视图。
- * [element] 由后台线程预解析传入，此函数不再在主线程做 JSON 解析。
- */
-@Composable
-private fun JsonTreeView(element: JsonElement?) {
-    if (element == null) {
-        Box(Modifier.fillMaxSize().background(Color(0xFFFAFAFA)), contentAlignment = Alignment.Center) {
-            Text("(空)", color = Color(0xFF9E9E9E), style = MaterialTheme.typography.bodySmall)
-        }
-        return
-    }
-    SelectionContainer {
-        val scrollState = rememberScrollState()
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFFAFAFA))
-                .verticalScroll(scrollState)
-                .padding(12.dp)
-        ) {
-            JsonNodeView(key = null, element = element, depth = 0)
-        }
-    }
-}
-
-@Composable
-private fun JsonNodeView(key: String?, element: JsonElement, depth: Int) {
-    when (element) {
-        is JsonObject -> JsonObjectView(key = key, obj = element, depth = depth)
-        is JsonArray -> JsonArrayView(key = key, arr = element, depth = depth)
-        is JsonPrimitive -> JsonPrimitiveRow(key = key, primitive = element, depth = depth)
-    }
-}
-
-@Composable
-private fun JsonObjectView(key: String?, obj: JsonObject, depth: Int) {
-    // 根节点（depth=0）默认展开；嵌套节点默认收起，减少初始渲染压力
-    var expanded by remember { mutableStateOf(depth == 0) }
-    val startPadding = (depth * 16).dp
-
-    // 标题行：可点击切换展开/收起
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { expanded = !expanded }
-            .padding(start = startPadding, top = 1.dp, bottom = 1.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = if (expanded) "▼ " else "▶ ",
-            style = jsonMonoStyle,
-            color = Color(0xFF9E9E9E)
-        )
-        if (key != null) {
-            Text("\"$key\"", style = jsonMonoStyle, color = Color(0xFF0277BD))
-            Text(": ", style = jsonMonoStyle, color = Color(0xFF616161))
-        }
-        if (expanded) {
-            Text("{", style = jsonMonoStyle, color = Color(0xFF616161))
-        } else {
-            Text("{ ${obj.size} }", style = jsonMonoStyle, color = Color(0xFF9E9E9E))
-        }
-    }
-
-    if (expanded) {
-        obj.entries.forEach { (k, v) ->
-            JsonNodeView(key = k, element = v, depth = depth + 1)
-        }
-        Row(modifier = Modifier.padding(start = startPadding + 16.dp, top = 1.dp, bottom = 1.dp)) {
-            Text("}", style = jsonMonoStyle, color = Color(0xFF616161))
-        }
-    }
-}
-
-@Composable
-private fun JsonArrayView(key: String?, arr: JsonArray, depth: Int) {
-    // 根节点（depth=0）默认展开；嵌套节点默认收起，减少初始渲染压力
-    var expanded by remember { mutableStateOf(depth == 0) }
-    val startPadding = (depth * 16).dp
-
-    // 标题行：可点击切换展开/收起
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { expanded = !expanded }
-            .padding(start = startPadding, top = 1.dp, bottom = 1.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = if (expanded) "▼ " else "▶ ",
-            style = jsonMonoStyle,
-            color = Color(0xFF9E9E9E)
-        )
-        if (key != null) {
-            Text("\"$key\"", style = jsonMonoStyle, color = Color(0xFF0277BD))
-            Text(": ", style = jsonMonoStyle, color = Color(0xFF616161))
-        }
-        if (expanded) {
-            Text("[", style = jsonMonoStyle, color = Color(0xFF616161))
-        } else {
-            Text("[ ${arr.size} ]", style = jsonMonoStyle, color = Color(0xFF9E9E9E))
-        }
-    }
-
-    if (expanded) {
-        arr.forEach { element ->
-            JsonNodeView(key = null, element = element, depth = depth + 1)
-        }
-        Row(modifier = Modifier.padding(start = startPadding + 16.dp, top = 1.dp, bottom = 1.dp)) {
-            Text("]", style = jsonMonoStyle, color = Color(0xFF616161))
-        }
-    }
-}
-
-@Composable
-private fun JsonPrimitiveRow(key: String?, primitive: JsonPrimitive, depth: Int) {
-    // +16.dp 对齐到已展开子节点的起始位置
-    val startPadding = (depth * 16).dp + 16.dp
-
-    val (valueText, valueColor) = when {
-        primitive is JsonNull -> "null" to Color(0xFF9E9E9E)
-        primitive.isString -> "\"${primitive.content}\"" to Color(0xFF2E7D32)
-        primitive.content == "true" -> "true" to Color(0xFF1565C0)
-        primitive.content == "false" -> "false" to Color(0xFFC62828)
-        else -> primitive.content to Color(0xFFBF360C)  // 数字
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = startPadding, top = 1.dp, bottom = 1.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (key != null) {
-            Text("\"$key\"", style = jsonMonoStyle, color = Color(0xFF0277BD))
-            Text(": ", style = jsonMonoStyle, color = Color(0xFF616161))
-        }
-        Text(valueText, style = jsonMonoStyle, color = valueColor)
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Query 参数解析与展示

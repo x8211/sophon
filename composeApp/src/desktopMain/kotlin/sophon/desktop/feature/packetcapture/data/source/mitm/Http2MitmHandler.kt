@@ -1,5 +1,6 @@
 package sophon.desktop.feature.packetcapture.data.source.mitm
 
+import io.netty.buffer.Unpooled
 import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
@@ -17,6 +18,7 @@ import io.netty.handler.codec.http2.Http2StreamChannel
 import io.netty.handler.codec.http2.Http2StreamChannelBootstrap
 import io.netty.util.ReferenceCountUtil
 import sophon.desktop.feature.packetcapture.data.source.grpc.GrpcDetector
+import sophon.desktop.feature.packetcapture.data.source.grpc.GrpcMockRegistry
 import sophon.desktop.feature.packetcapture.model.CapturedPacket
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.atomic.AtomicLong
@@ -152,6 +154,17 @@ private class Http2FrontendStreamHandler(
             }
         )
 
+        // gRPC Mock 短路：命中规则时直接写 mock 响应，不请求真实后端
+        val mockResult = if (isGrpc) GrpcMockRegistry.findMatch(host, pendingPath) else null
+        if (mockResult != null) {
+            writeMockResponse(
+                frontendStream, mockResult,
+                packetId, timestamp, startNano,
+                pendingMethod, pendingScheme, pendingPath, reqHeadersMap, requestBodyBytes
+            )
+            return
+        }
+
         backendManager.withChannel(
             eventLoop = ctx.channel().eventLoop(),
             action = { backendParentChannel ->
@@ -169,8 +182,64 @@ private class Http2FrontendStreamHandler(
     }
 
     /**
-     * 在已就绪的后端父 Channel 上打开子流，转发完整请求，并注册 [Http2BackendStreamHandler]。
+     * 向前端流写 Mock 响应（HEADERS → DATA → trailers），绕过真实后端。
+     * 完成后触发 [onPacketCaptured] 上报带 [CapturedPacket.Grpc.isMocked]=true 的完整抓包记录。
      */
+    private fun writeMockResponse(
+        frontendStream: Channel,
+        mockResult: GrpcMockRegistry.MockResult,
+        packetId: Long,
+        timestamp: Long,
+        startNano: Long,
+        method: String,
+        scheme: String,
+        path: String,
+        reqHeadersMap: Map<String, String>,
+        requestBodyBytes: ByteArray?
+    ) {
+        val durationMs = (System.nanoTime() - startNano) / 1_000_000
+        val responseHeaders = mapOf(
+            ":status" to "200",
+            "content-type" to "application/grpc+proto",
+        )
+        val trailerGrpcStatus = mockResult.grpcStatus.toString()
+        val responseAllHeaders = responseHeaders + mapOf(
+            "grpc-status" to trailerGrpcStatus,
+            "grpc-message" to if (mockResult.grpcStatus == 0) "OK" else "Mock error",
+        )
+
+        // 写 HEADERS（:status=200）
+        val respHeaders = DefaultHttp2Headers()
+            .status("200")
+            .add("content-type", "application/grpc+proto")
+        frontendStream.write(DefaultHttp2HeadersFrame(respHeaders, false))
+
+        // 写 DATA（带 5 字节 gRPC 帧头的 protobuf bytes）
+        val dataBuf = Unpooled.wrappedBuffer(mockResult.encodedBody)
+        frontendStream.write(DefaultHttp2DataFrame(dataBuf, false))
+
+        // 写 trailers（grpc-status + END_STREAM）
+        val trailers = DefaultHttp2Headers()
+            .add("grpc-status", trailerGrpcStatus)
+            .add("grpc-message", if (mockResult.grpcStatus == 0) "OK" else "Mock error")
+        frontendStream.writeAndFlush(DefaultHttp2HeadersFrame(trailers, true))
+
+        // 上报完整 Mock 抓包记录
+        onPacketCaptured(
+            CapturedPacket.Grpc(
+                id = packetId, timestamp = timestamp,
+                method = method, scheme = scheme, host = host, path = path,
+                requestHeaders = reqHeadersMap, requestBody = requestBodyBytes,
+                statusCode = 200,
+                responseHeaders = responseAllHeaders,
+                responseBody = mockResult.encodedBody,
+                durationMs = durationMs,
+                isMocked = true,
+            )
+        )
+    }
+
+
     private fun openBackendStream(
         backendParentChannel: Channel,
         frontendStream: Channel,

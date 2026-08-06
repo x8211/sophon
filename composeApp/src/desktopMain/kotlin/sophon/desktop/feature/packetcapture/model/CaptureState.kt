@@ -41,6 +41,14 @@ data class CaptureState(
      * 用于 [selectedPacket] O(1) 查找，避免每次 O(n) find。
      */
     val packetIndex: Map<Long, CapturedPacket> = emptyMap(),
+    /** 用户配置的 gRPC Mock 规则列表。 */
+    val mockRules: List<GrpcMockRule> = emptyList(),
+    /** 是否显示 gRPC Mock 管理对话框。 */
+    val showMockDialog: Boolean = false,
+    /** 正在对话框中编辑的规则；null 表示新建。 */
+    val editingMockRule: GrpcMockRule? = null,
+    /** ruleId → 编码错误信息（Schema 未找到 / JSON 解析失败）。 */
+    val mockEncodeErrors: Map<String, String> = emptyMap(),
 ) {
     val isRunning: Boolean get() = status == CaptureStatus.RUNNING
 
