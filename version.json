@@ -1,8 +1,8 @@
 {
-  "version": "1.0.1",
-  "releaseNotes": "功能更新",
+  "version": "1.0.5",
+  "releaseNotes": "\n\n\n**Full Changelog**: https://github.com/x8211/sophon/compare/1.0.1...v1.0.5",
   "downloadUrl": {
-    "macos": "https://github.com/x8211/sophon/releases/download/1.0.1/Sophon-1.0.1.dmg",
-    "windows": ""
+    "macos": "https://github.com/x8211/sophon/releases/download/v1.0.5/Sophon-1.0.5.dmg",
+    "windows": "https://github.com/x8211/sophon/releases/download/v1.0.5/Sophon-1.0.5.msi"
   }
 }
