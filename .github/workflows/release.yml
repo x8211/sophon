@@ -1,0 +1,202 @@
+# 自动发布 Sophon 桌面端安装包
+#
+# 触发方式：
+#   1. 推送 tag（推荐）：git tag v1.0.6 && git push origin v1.0.6
+#   2. 手动触发：Actions → Release → Run workflow，填写版本号
+#
+# 流程：跨平台构建 DMG/MSI → 创建 GitHub Release → 更新 version.json + gradle.properties
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（如 1.0.6，不要加 v 前缀）'
+        required: true
+      release_notes:
+        description: '更新说明（写入 version.json 与 GitHub Release）'
+        required: false
+        default: '功能更新与 Bug 修复'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: '21'
+
+jobs:
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      release_notes: ${{ steps.meta.outputs.release_notes }}
+      has_custom_notes: ${{ steps.meta.outputs.has_custom_notes }}
+    steps:
+      - name: Resolve version metadata
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            VERSION="${VERSION#v}"
+            TAG="v${VERSION}"
+            NOTES="${{ github.event.inputs.release_notes }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            VERSION="${TAG#v}"
+            NOTES=""
+          fi
+
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+            echo "::error::Invalid semver: $VERSION"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$NOTES" ]; then
+            echo "has_custom_notes=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "release_notes<<EOF"
+              echo "$NOTES"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "has_custom_notes=false" >> "$GITHUB_OUTPUT"
+            echo "release_notes=" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: resolve-version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            task: packageReleaseDmg
+            artifact_name: macos-dmg
+            find_dir: composeApp/build/compose/binaries/main-release/dmg
+            extension: dmg
+          - os: windows-latest
+            task: packageReleaseMsi
+            artifact_name: windows-msi
+            find_dir: composeApp/build/compose/binaries/main-release/msi
+            extension: msi
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build ${{ matrix.task }}
+        shell: bash
+        run: >
+          ./gradlew :composeApp:${{ matrix.task }}
+          -PappVersion=${{ needs.resolve-version.outputs.version }}
+          --no-daemon
+          --stacktrace
+
+      - name: Prepare release asset
+        shell: bash
+        env:
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+        run: |
+          mkdir -p release-assets
+          FILE=$(find "${{ matrix.find_dir }}" -name "*.${{ matrix.extension }}" -type f | head -1)
+          if [ -z "$FILE" ]; then
+            echo "::error::No .${{ matrix.extension }} artifact found under ${{ matrix.find_dir }}"
+            find composeApp/build/compose/binaries -type f || true
+            exit 1
+          fi
+          cp "$FILE" "release-assets/Sophon-${VERSION}.${{ matrix.extension }}"
+          ls -la release-assets/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: release-assets/*
+          if-no-files-found: error
+
+  release:
+    needs: [resolve-version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: List release assets
+        run: find release-assets -type f -exec ls -la {} +
+
+      - name: Create GitHub Release
+        id: gh_release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.resolve-version.outputs.tag }}
+          name: Sophon ${{ needs.resolve-version.outputs.version }}
+          body: |
+            ${{ needs.resolve-version.outputs.has_custom_notes == 'true' && needs.resolve-version.outputs.release_notes || '' }}
+          generate_release_notes: ${{ needs.resolve-version.outputs.has_custom_notes != 'true' }}
+          files: release-assets/*
+          draft: false
+          prerelease: false
+
+      - name: Update version.json and gradle.properties
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+          TAG: ${{ needs.resolve-version.outputs.tag }}
+          REPO: ${{ github.repository }}
+          CUSTOM_NOTES: ${{ needs.resolve-version.outputs.release_notes }}
+          HAS_CUSTOM_NOTES: ${{ needs.resolve-version.outputs.has_custom_notes }}
+        run: |
+          if [ "$HAS_CUSTOM_NOTES" = "true" ]; then
+            RELEASE_NOTES="$CUSTOM_NOTES"
+          else
+            RELEASE_NOTES=$(gh release view "$TAG" --json body -q .body)
+          fi
+
+          # 用 jq 生成 version.json，避免 Python heredoc 缩进问题
+          jq -n \
+            --arg version "$VERSION" \
+            --arg notes "$RELEASE_NOTES" \
+            --arg macos "https://github.com/$REPO/releases/download/$TAG/Sophon-$VERSION.dmg" \
+            --arg windows "https://github.com/$REPO/releases/download/$TAG/Sophon-$VERSION.msi" \
+            '{version: $version, releaseNotes: $notes, downloadUrl: {macos: $macos, windows: $windows}}' \
+            > version.json
+
+          sed -i "s/^appVersion=.*/appVersion=${VERSION}/" gradle.properties
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add version.json gradle.properties
+
+          if git diff --staged --quiet; then
+            echo "version.json and gradle.properties already up to date."
+          else
+            git commit -m "chore: bump version to ${VERSION} [skip ci]"
+            git push origin master
+          fi
