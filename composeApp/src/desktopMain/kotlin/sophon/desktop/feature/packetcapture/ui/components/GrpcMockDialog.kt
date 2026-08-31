@@ -2,9 +2,11 @@ package sophon.desktop.feature.packetcapture.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -45,6 +47,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import sophon.desktop.feature.packetcapture.model.GrpcMockRule
 import java.util.UUID
 
@@ -70,7 +75,6 @@ fun GrpcMockDialog(
     var formHost   by remember(editingRule?.id) { mutableStateOf(editingRule?.host        ?: "") }
     var formPath   by remember(editingRule?.id) { mutableStateOf(editingRule?.path        ?: "") }
     var formJson   by remember(editingRule?.id) { mutableStateOf(editingRule?.responseJson ?: "{}") }
-    var formStatus by remember(editingRule?.id) { mutableStateOf(editingRule?.grpcStatus?.toString() ?: "0") }
     val canSave = editingRule != null && formHost.isNotBlank() && formPath.isNotBlank()
 
     AlertDialog(
@@ -111,10 +115,9 @@ fun GrpcMockDialog(
                 if (editingRule != null) {
                     MockRuleEditForm(
                         modifier             = Modifier.weight(1f),
-                        host                 = formHost,   onHostChange   = { formHost   = it },
-                        path                 = formPath,   onPathChange   = { formPath   = it },
-                        responseJson         = formJson,   onJsonChange   = { formJson   = it },
-                        grpcStatus           = formStatus, onStatusChange = { formStatus = it.filter { c -> c.isDigit() } },
+                        host                 = formHost,   onHostChange = { formHost = it },
+                        path                 = formPath,   onPathChange = { formPath = it },
+                        responseJson         = formJson,   onJsonChange = { formJson = it },
                         isNew                = editingRule.host.isBlank() && editingRule.path.isBlank(),
                     )
                 } else {
@@ -139,10 +142,9 @@ fun GrpcMockDialog(
                         onClick = {
                             onSave(
                                 editingRule.copy(
-                                    host        = formHost.trim(),
-                                    path        = formPath.trim(),
+                                    host         = formHost.trim(),
+                                    path         = formPath.trim(),
                                     responseJson = formJson,
-                                    grpcStatus  = formStatus.toIntOrNull() ?: 0,
                                 )
                             )
                         },
@@ -245,15 +247,24 @@ private fun MockRuleRow(
     }
 }
 
+private enum class JsonEditorMode(val label: String) {
+    TREE("树形"),
+    RAW("纯文本"),
+}
+
+private val prettyJson = Json { prettyPrint = true; ignoreUnknownKeys = true }
+private val compactJson = Json { prettyPrint = false; ignoreUnknownKeys = true }
+
 @Composable
 private fun MockRuleEditForm(
     modifier: Modifier = Modifier,
     host: String,         onHostChange: (String) -> Unit,
     path: String,         onPathChange: (String) -> Unit,
     responseJson: String, onJsonChange: (String) -> Unit,
-    grpcStatus: String,   onStatusChange: (String) -> Unit,
     isNew: Boolean,
 ) {
+    var editorMode by remember { mutableStateOf(JsonEditorMode.TREE) }
+
     Column(modifier = modifier) {
         HorizontalDivider(thickness = 1.dp)
         Spacer(Modifier.height(8.dp))
@@ -287,43 +298,101 @@ private fun MockRuleEditForm(
         )
         Spacer(Modifier.height(6.dp))
 
-        // 响应 JSON 树形内联编辑
-        Text(
-            text = "响应 JSON",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(4.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
-                .clip(RoundedCornerShape(4.dp))
-        ) {
-            JsonTreeEditor(jsonText = responseJson, onJsonChange = onJsonChange)
-        }
-        Spacer(Modifier.height(6.dp))
-
-        // grpc-status 与说明文字横排，避免标题换行
+        // 响应 JSON 标题栏 + 工具栏（格式化、压缩）+ 模式切换
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            OutlinedTextField(
-                value = grpcStatus,
-                onValueChange = onStatusChange,
-                label = { Text("grpc-status") },
-                singleLine = true,
-                modifier = Modifier.width(120.dp),
-                textStyle = MaterialTheme.typography.bodySmall
-            )
             Text(
-                text = "0 = OK，其余值表示错误",
+                text = "响应 JSON",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                TextButton(
+                    onClick = {
+                        runCatching {
+                            val elem = Json.parseToJsonElement(responseJson)
+                            onJsonChange(prettyJson.encodeToString(JsonElement.serializer(), elem))
+                        }
+                    },
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                    modifier = Modifier.height(24.dp)
+                ) {
+                    Text("格式化", style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp))
+                }
+                TextButton(
+                    onClick = {
+                        runCatching {
+                            val elem = Json.parseToJsonElement(responseJson)
+                            onJsonChange(compactJson.encodeToString(JsonElement.serializer(), elem))
+                        }
+                    },
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                    modifier = Modifier.height(24.dp)
+                ) {
+                    Text("压缩", style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp))
+                }
+
+                Spacer(Modifier.width(4.dp))
+
+                // 树形 / 纯文本 切换 pill
+                Row(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(12.dp))
+                        .padding(2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    JsonEditorMode.entries.forEach { mode ->
+                        val isSelected = editorMode == mode
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent
+                                )
+                                .clickable { editorMode = mode }
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = mode.label,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+
+        // JSON 编辑区域（树形 or 纯文本）
+        when (editorMode) {
+            JsonEditorMode.TREE -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
+                        .clip(RoundedCornerShape(4.dp))
+                ) {
+                    JsonTreeEditor(jsonText = responseJson, onJsonChange = onJsonChange)
+                }
+            }
+            JsonEditorMode.RAW -> {
+                JsonRawTextEditor(
+                    jsonText = responseJson,
+                    onJsonChange = onJsonChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                )
+            }
         }
         Spacer(Modifier.height(4.dp))
     }
