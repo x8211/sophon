@@ -1,8 +1,8 @@
 {
-  "version": "1.0.5",
-  "releaseNotes": "\n\n\n**Full Changelog**: https://github.com/x8211/sophon/compare/1.0.1...v1.0.5",
+  "version": "1.0.6",
+  "releaseNotes": "\n\n\n**Full Changelog**: https://github.com/x8211/sophon/compare/v1.0.5...v1.0.6",
   "downloadUrl": {
-    "macos": "https://github.com/x8211/sophon/releases/download/v1.0.5/Sophon-1.0.5.dmg",
-    "windows": "https://github.com/x8211/sophon/releases/download/v1.0.5/Sophon-1.0.5.msi"
+    "macos": "https://github.com/x8211/sophon/releases/download/v1.0.6/Sophon-1.0.6.dmg",
+    "windows": "https://github.com/x8211/sophon/releases/download/v1.0.6/Sophon-1.0.6.msi"
   }
 }
